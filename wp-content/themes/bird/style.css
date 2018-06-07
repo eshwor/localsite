@@ -12,3 +12,6 @@ Tags: Front-end, Back-end, ACF, Sass, Gulp, CSS, HTML5, SVG etc
 This theme, like WordPress, is licensed under the GPL.
 Use it to make something cool, have fun, and share what you've learned with others.
 */
+
+
+@import "dist/css/style.min.css";

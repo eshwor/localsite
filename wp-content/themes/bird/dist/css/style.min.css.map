@@ -1,0 +1,1 @@
+{"version":3,"sources":["style.scss","base/var.scss"],"names":[],"mappings":"AAEA,KACE,eCHS,CDIV","file":"style.min.css","sourcesContent":["@import \"base/var.scss\";\n\nbody {\n  background: $blue;\n}\n","$blue: blue;\n$red: red;\n$green: green;\n$white: white;\n$gray: #DDD;\n"]}
