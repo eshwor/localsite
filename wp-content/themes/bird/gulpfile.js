@@ -12,14 +12,14 @@ var browserSync = require ('browser-sync').create();
 var reload = browserSync.reload;
 
 //var for path
-var styleSRC = 'src/scss/style.scss'; //Path for source file
+var styleSRC = 'library/scss/style.scss'; //Path for source file
 var styleDist = './dist/css/'; //path for dist for converted files
-var styleWatch = 'src/scss/**/*.scss';
+var styleWatch = 'library/scss/**/*.scss';
 
 var jsSRC = 'global.js'; //Path for source file
-var jsFolder = 'src/js/';  //js folder
+var jsFolder = 'library/global/';  //js folder
 var jsDist = './dist/js/'; //path for dist for converted files
-var jsWatch = 'src/js/**/global.js';
+var jsWatch = 'library/global/**/global.js';
 var jsFILES = [jsSRC];  //array use
 
 gulp.task( 'browser-sync', function() {
