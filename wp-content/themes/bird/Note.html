@@ -1,0 +1,94 @@
+<!-- Collection of usefule function list -->
+1: get_template_directory(); //To get the absolute path
+2: get_template_directory_uri();
+2: get_stylesheet_directory_uri();
+Note: https://codex.wordpress.org/Function_Reference/get_template_directory
+
+//Add menu page on side of dashboard
+4: function create_menu_sidebar () {
+    add_menu_page ("dreamcatcher_theme_options", "Dcatcher", "manage_options", "dreamcatcher_menu_options", "create_menu_function", "dashicons-sticky", 110);
+
+    //Sub menu
+    add_submenu_page('dreamcatcher_menu_options', 'dreamcatcher', 'Settings', 'manage_options', 'dreamcatcher_menu_options', 'create_submenu_function');
+    add_submenu_page('dreamcatcher_menu_options', 'dreamcatcher', 'Style', 'manage_options', 'dreamcatcher_submenu_options', 'create_submenu_second_function');
+}
+add_action("admin_menu", "create_menu_sidebar");
+
+//Call Back Function
+function create_menu_function () {
+  //Add menu page call back functions
+}
+Reference link for Roles which is used "manage_options": https://codex.wordpress.org/Roles_and_Capabilities
+Reference link for add_menu_page just like the above: https://developer.wordpress.org/reference/functions/add_menu_page/
+Reference link for add_submenu_page :https://developer.wordpress.org/reference/functions/add_submenu_page/
+
+How to activeted menus options under appearance :::
+5: //Activite the default Menu
+function themes_support_menu(){
+  add_theme_support('menus');
+}
+add_action('init', 'themes_support_menu');
+
+//Second Way To active and customize the menu ::::::::
+function themes_support_menu(){
+    //add_theme_support('menus');
+     register_nav_menu('primary', 'Primary Navigation');
+     register_nav_menu('secondary', 'Footer Navigation');
+}
+add_action('init', 'themes_support_menu');
+
+TO DISPLAY THE MENU IN THE PAGE:::::::::::
+<?php wp_nav_menu( array('theme_location' => 'primary') ); ?>
+<?php wp_nav_menu(array('theme_location'=>'secondary')); ?>
+
+___________Another way to register menu by giving its name__________Register the menu in array
+register_nav_menus ( array (
+    'primary'  => __('Primary Navigation'),
+    'secondary' => __('Secondary Navigation'),
+));
+
+//To Display the menu
+<?php
+  $args = array (
+    'theme_location' => 'primary'
+  );
+  wp_nav_menu ( $args );
+?>
+<?php
+  $args = array (
+    'theme_location' => 'secondary'
+  );
+  wp_nav_menu ( $args );
+ ?>
+
+
+
+6: Include CSS and Script files <!-- NOTE: always include <?php wp_head(); ?> inside of header tag in header.php -->
+//Default way to include default style.css files
+function create_styles_now (){
+  wp_enqueue_style( 'style', get_stylesheet_uri() );
+}
+add_action( "wp_enqueue_scripts", "create_styles_now" );
+
+//Second Way:::::
+function create_styles_now (){
+  wp_enqueue_style( 'style', get_stylesheet_uri() ); //default way
+  wp_enqueue_style('customstyle', get_template_directory_uri() . '/library/css/custom.css', array(), '1.0.0', 'all'); // another way
+}
+add_action( "wp_enqueue_scripts", "create_styles_now" );
+
+/////// Include Script Files ///////
+
+
+
+\\\||||||||||||\\\\\\\\||||||||\\\\||||||||\\||\\||\|\\|\|\|\|\|\|\|\|\|\|\\\\\\\\\\||||||||||||||||||||\\\
+1) Slug name and how to make template page
+2) add_theme_support ('custom-background') //There are other options too .
+ Here what we can add : https://codex.wordpress.org/Function_Reference/get_theme_support
+3) Sidebar page : Register the sidebar as like functions.php , make a sidebar.php and write the code as : <?php dynamic_sidebar( 'Sidebar-1' ); ?> with giving the id name of it.
+  To display the sidebar whereever you want: Use this code :  <?php get_sidebar(); ?>
+
+
+
+|||||||||||||||||||||||||||||||||QUERY POST|||||||||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||

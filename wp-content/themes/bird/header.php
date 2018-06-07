@@ -7,14 +7,12 @@
         <link rel="pingback" href="<?php bloginfo( 'pingback_url' ); ?>" />
         <?php if ( is_singular() && get_option( 'thread_comments' ) ) wp_enqueue_script( 'comment-reply' ); ?>
         <?php wp_head(); ?>
-    </head <?php body_class(); ?>>
+    </head>
 
-    <header>
-
-    </header>
+    <body >
 
     <nav>
 
     </nav>
 
-    <main id="site-content" class="site-content">
+    <main>
