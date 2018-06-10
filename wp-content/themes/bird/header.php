@@ -9,10 +9,17 @@
         <?php wp_head(); ?>
     </head>
 
-    <body >
+    <body <?php body_class(array('main-class')); ?>>
 
-    <nav>
-
-    </nav>
-
+      <nav id="main-menu" class="main-menu">
+        <?php
+          wp_nav_menu(
+            array(
+              'theme_location'  => 'Primary-Menu',
+              'container_class'  =>  'parent_menu'
+            )
+          );
+         ?>
+      </nav>
+    <hr>
     <main>

@@ -1,0 +1,18 @@
+//Navigation CSS Rules
+
+.parent_menu {
+  ul {
+  
+  }
+  li {
+    list-style: none;
+    display: inline-block;
+    a {
+      text-decoration: none;
+      color: black;
+      text-transform: uppercase;
+      padding: 0 1em;
+
+    }
+  }
+}
