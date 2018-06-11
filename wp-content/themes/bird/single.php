@@ -16,7 +16,6 @@
   else:
     echo wpautop('Sorry, No Post Found ! ');
   endif;
-
  ?>
 
 
