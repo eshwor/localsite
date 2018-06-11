@@ -18,23 +18,18 @@
 // wp_reset_postdata();
  ?>
 
-
-
 <?php
   if ( have_posts() ) :
     while ( have_posts() ) : the_post();
     //check if there is featured image or not
     if( has_post_thumbnail() ) :
-      the_post_thumbnail('medium', array('class' => 'image-class'));
+      the_post_thumbnail('medium', array('class' => 'image-class', 'alt' => 'birds picture'));
     endif;
-      ?>
-      <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
-      <?php
+      if(is_home()){ ?>
+        <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
+      <?php }
       the_content();
     endwhile;
-    ?>
-  
-    <?php
   else:
     echo wpautop('Sorry, No Post Found ! ');
   endif;
