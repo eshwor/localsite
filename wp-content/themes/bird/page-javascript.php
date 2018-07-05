@@ -3,20 +3,13 @@
  ?>
 <?php get_header(); ?>
 
-<h1  style="text-decoration:underline;">Javascript</h1>
-
-<p>The total is : <span id="sum"></span> </p>
-<p>The highest number is : <span id="highest"></span> </p>
-
-<hr><h2>OOP</h2>
-<p id="object"></p>
-
-<hr><h2>Error Handlers</h2>
-<p id="errmsg"></p>
-
-
-
 <script type="text/javascript">
+
+"use strict";
+
+//Set some variables :::
+const line = "<hr>";
+const lineBreak = "<br>";
 
 //SUM
 var points = [1, 20, 30];
@@ -26,131 +19,138 @@ function getSum(total, num) {
 
 //Highest and Lowest (b -a)
 points.sort(function(a, b){return a - b });
-
-document.getElementById('sum').innerHTML = points.reduce(getSum);
-document.getElementById('highest').innerHTML = points[0];
-
-
-//Error Handlers Try, Catch, Finally
-function arrayFun() {
-var fruits = ["Apple", " Banana", " Orange"];
-document.write(fruits);
-}
-
-try {
-  arrayFun();
-} catch(err) {
-  document.getElementById('errmsg').innerHTML = err.message;
-
-}
-
-//Javascript OOP
-var person = {
-  firstname: "Ishwor",
-  lastname: "Khatri",
-  age: 19,
-  id: 4323,
-  fullname: function() {
-    return this.firstname + " " + this.lastname;
-  }
-}
-document.getElementById('object').innerHTML = person.fullname();
-
-var human = {
-  firstname: "Ishwor",
-  lastname: "khatri",
-  ID: 1,
-  fullname: function() {
-    return this.firstname + " " + this.lastname;
-  }
-}
-
-// document.getElementById('demo').innerHTML = human.fullname();
+document.write( points.reduce(getSum) + lineBreak );
+document.write( points[0] + lineBreak + line );
 
 
 //OOP CONCEPT
-// Constructor function for Person objects
-function Person(first, last, age, eye, nationality) {
-  this.firstname = first;
-  this.lastname = last;
-  this.age = age;
-  this.eye = eye;
+document.write("<h2>Javascript Advance</h2>" + line + line );
+
+
+/**
+PORTOTYPE
+*/
+
+//Create a construction
+function Employee(name){
+  this.name = name;
 }
 
-Person.prototype.nationality = "Nepali"
+//Add the function using prototype
+Employee.prototype.getName = function(){
+  return this.name.toUpperCase();
 
-Person.prototype.fullname = function() {
-  return this.firstname + " " + this.lastname + ", " + this.age + " year's old." + " He/She is a " + this.nationality + ".";
 }
 
-// Create a Person object
-var myname = new Person("Ishwor", "Khatri", 26, "Black");
-var sharmila = new Person("Sharmila", "Khatri", 25, "Black");
-document.getElementById('demo').innerHTML = myname.fullname();
-document.getElementById('demo2').innerHTML = sharmila.fullname();
+//Create an object by using above construction
+var EmployeeOne = new Employee('Josh');
+var EmployeeTwo = new Employee('Don');
 
+//Display an object
+document.write(EmployeeOne.getName() + lineBreak);
+document.write(EmployeeTwo.getName() + lineBreak);
 
-//Another Way of learn OOP
-//OOP MASSIVE EXERCISE
-var customer = {
-  name: "Tom Smith",
-  speak: function() {
-    return "My name is " + this.name;
+document.write( lineBreak + line + line );
+/**
+INHERITANCE
+*/
+
+//create the base construction
+function Worker(name) {
+  this.name = name;
+}
+
+//prototype to get name
+Worker.prototype.getName = function(){
+  return this.name;
+}
+
+//prototype to get name length
+Worker.prototype.getNameLength = function(){
+  return this.name.length;
+}
+
+//Add Another function or construction
+function PermanentWorker(salary){
+   this.salary = salary;
+}
+
+//Create an Object by using base construction
+var WorkerOne = new Worker("Tigerlol");
+
+//Now INHERITANCE the PermanentWorker construction with base Worker
+PermanentWorker.prototype = WorkerOne;
+
+//Create an new object by using PermanentWorker because it's already INHERITANCE with Worker construction to access getName function
+var PermanentWorerOne = new PermanentWorker(50000);
+document.write(PermanentWorerOne.getName() + lineBreak); //Get the Name
+document.write("The Name Length Is : " + PermanentWorerOne.getNameLength()); //Get the Name Length
+
+document.write( lineBreak + line + line );
+//COOKIES
+
+document.write("<button onclick='setCookie();'>SetCookie</button>" + lineBreak);
+
+//set the cookie
+function setCookie(){
+  document.cookie = "CookieName = CookieValue";
+}
+
+//Read the cookies
+var readCookie = document.cookie;
+
+if(readCookie){
+  document.write("Cookie has been set !");
+}else {
+  document.write("Cookie is not set yet!");
+}
+
+document.write( lineBreak + line + line );
+//JSON
+
+var employees = {
+  "Firstname":"Krishna",
+  "Lastname":"Khatri",
+  "age":30,
+  "Degree":"Associate",
+};
+document.write(employees.Firstname + " " + employees.Lastname + " " + employees.age);
+document.write( lineBreak );
+
+//Json Object
+var friends = {
+  "Mark": {
+    "Firstname":"Mark",
+    "Lastname":"Silton",
+    "Gender":"Male",
   },
-  address: {
-    street: "123 Main St",
-    city: "Colorodo Spring",
-    state: "Colorado"
-  }
-}
+  "Preety": {
+    "Firstname":"Preety",
+    "Lastname":"Sohagan",
+    "Gender":"Female",
+  },
+};
+document.write(friends.Mark.Firstname + " is a " + friends.Mark.Gender + lineBreak);
+document.write(friends.Preety.Firstname + " is a " + friends.Preety.Gender + lineBreak);
 
-document.write(customer.speak() + "</br>");
-document.write(customer.address.street + "</br>");
-customer.address.country = "USA";
-document.write(customer.address.country + "</br>");
+document.write( lineBreak + line + line );
+//Json Array Store
+var employeesName= [
+    {
+        "firstName": "Todd",
+        "lastName": "Grover",
+        "gender": "Male",
+        "salary": 50000
+    },
+    {
+        "firstName": "Sara",
+        "lastName": "Baker",
+        "gender": "Female",
+        "salary": 40000
+    }
+];
 
-document.write("<hr></br>");
-//Construction function to create the object
-function Person(name, address) {
-  this.name = name;
-  this.address = address;
-  this.info = function(){
-    return "My name is " + this.name + " and I live in " + this.address;
-  }
-}
-
-//Create the object using above construction
-var ram = new Person("Ram Smith", "123 Main Dr");
-document.write(ram.info() + "</br>");
-
-//Change the same object value using funtion
-function changeName(person){
-  person.name = "Shyam";
-}
-changeName(ram);
-document.write("Ram Smith is became a " + ram.name);
-
-document.write("<hr></br>");
-//Prototype
-
-//Construction
-function Mammal(name) {
-  this.name = name;
-  this.getInfro = function(){
-    return "This mammals name is " + this.name;
-  }
-}
-
-//add additional properties and methods to Mammal Construction
-Mammal.prototype.sound = "'Grrrrr'";
-Mammal.prototype.makesound = function(){
-  return this.name + " says " + this.sound;
-}
-
-//Create the object and output the result
-var Grover = new Mammal('Grover');
-document.write(Grover.makesound() + "</br>");
-
+document.write(employeesName[0].firstName); //Get the result
 
 
 
