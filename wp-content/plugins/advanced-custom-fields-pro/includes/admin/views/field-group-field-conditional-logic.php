@@ -91,6 +91,10 @@ if( empty($field['conditional_logic']) ) {
 										'name'		=> 'field',
 										'class'		=> 'condition-rule-field',
 										'disabled'	=> $disabled,
+										'value'		=> $rule['field'],
+										'choices'	=> array(
+											$rule['field'] => $rule['field']
+										)
 									));										
 		
 									?>
@@ -104,6 +108,10 @@ if( empty($field['conditional_logic']) ) {
 										'name'		=> 'operator',
 										'class'		=> 'condition-rule-operator',
 										'disabled'	=> $disabled,
+										'value'		=> $rule['operator'],
+										'choices'	=> array(
+											$rule['operator'] => $rule['operator']
+										)
 									)); 	
 									
 									?>
@@ -118,6 +126,10 @@ if( empty($field['conditional_logic']) ) {
 										'name'		=> 'value',
 										'class'		=> 'condition-rule-value',
 										'disabled'	=> $disabled,
+										'value'		=> $rule['value'],
+										'choices'	=> array(
+											$rule['value'] => $rule['value']
+										)
 									));
 									
 									?>

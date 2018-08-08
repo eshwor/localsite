@@ -278,10 +278,16 @@ function acf_is_sub_field( $field ) {
 *  @return	$label (string)
 */
 
-function acf_get_field_label( $field ) {
+function acf_get_field_label( $field, $context = '' ) {
 	
 	// vars
 	$label = $field['label'];
+	
+	
+	// show (no label) when editing field
+	if( $context == 'admin' && $label === '' ) {
+		$label = __('(no label)', 'acf');
+	}
 	
 	
 	// required
@@ -1074,7 +1080,7 @@ function _acf_get_field_by_name( $name = '', $db_only = false ) {
 *  @return	$field (array)
 */
 
-function acf_maybe_get_field( $selector, $post_id = false, $strict = false ) {
+function acf_maybe_get_field( $selector, $post_id = false, $strict = true ) {
 	
 	// init
 	acf_init();
