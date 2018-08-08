@@ -2,6 +2,11 @@
 /* Template Name: Flex Layout
 * @author: Ishwor
 */
+?>
+
+<?php get_header(); ?>
+
+<?php
 
 if ( have_rows('flex_layout')) :
   while ( have_rows('flex_layout')) : the_row();
@@ -61,3 +66,7 @@ endif;
 <div class="<?php echo $class_name; ?>">
   <h1>You Have Select <span style="text-decoration:underline;"><?php echo ucfirst($class_name); ?></span> Background</h1>
 </div>
+
+
+
+<?php get_footer(); ?>
