@@ -134,7 +134,9 @@ class ACF_Form_Post {
 
 		
 		// load acf scripts
-		acf_enqueue_scripts();
+		acf_enqueue_scripts(array(
+			'uploader'	=> true,
+		));
 		
 		
 		// actions

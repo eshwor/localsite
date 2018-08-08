@@ -15,9 +15,6 @@
 	// The global acf object
 	var acf = {};
 	
-	// Save the previous value of the `acf` variable.
-	var previousAcf = window.acf;
-	
 	// Set as a browser global
 	window.acf = acf;
 	
@@ -55,7 +52,7 @@
 	*/
 	
 	acf.has = function( name ){
-		return this.get(data) !== null;
+		return this.get(name) !== null;
 	};
 	
 	
@@ -665,40 +662,6 @@
 			return acf.__(plural);
 		}
 	};
-		
-	/** @var object Translation strings sent from PHP */
-	acf.l10n = {};
-	
-	/**
-	*  _e
-	*
-	*  Returns a translated string found in acf.l10n
-	*
-	*  @date	14/12/17
-	*  @since	5.6.5
-	*
-	*  @param	string k1 The first key to look for.
-	*  @param	string k2 The second key to look for.
-	*  @return	string
-	*/
-	
-	acf._e = function( k1, k2 ){
-		
-		// defaults
-		k1 = k1 || '';
-		k2 = k2 || '';
-		
-		// try k1
-		var string = this.l10n[ k1 ] || '';
-		
-		// try k2
-		if( k2 ) {
-			string = string[ k2 ] || '';
-		}
-		
-		// return
-		return string;
-	};
 	
 	acf.isArray = function( a ){
 		return Array.isArray(a);
@@ -813,25 +776,14 @@
 	*  @return	this
 	*/
 	
+/*
 	var prefixAction = function( action ){
 		return 'acf_' + action;
 	}
+*/
 	
 	acf.addAction = function( action, callback, priority, context ){
-		
-		// handle multiple actions
-		var actions = action.split(' ');
-		var length = actions.length;
-		if( length > 1 ) {
-			for( var i = 0; i < length; i++) {
-				action = actions[i];
-				acf.addAction.apply(this, arguments);
-			}
-			return this;
-		}
-		
-		// prefix, add, return
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		acf.hooks.addAction.apply(this, arguments);
 		return this;
 	};
@@ -850,7 +802,7 @@
 	*/
 	
 	acf.removeAction = function( action, callback ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		acf.hooks.removeAction.apply(this, arguments);
 		return this;
 	};
@@ -869,8 +821,10 @@
 	*/
 	
 	var actionHistory = {};
+	//var currentAction = false;
 	acf.doAction = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
+		//currentAction = action;
 		actionHistory[ action ] = 1;
 		acf.hooks.doAction.apply(this, arguments);
 		actionHistory[ action ] = 0;
@@ -891,7 +845,7 @@
 	*/
 	
 	acf.doingAction = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		return (actionHistory[ action ] === 1);
 	};
 	
@@ -909,13 +863,12 @@
 	*/
 	
 	acf.didAction = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		return (actionHistory[ action ] !== undefined);
 	};
 	
-	
 	/**
-	*  doingAction
+	*  currentAction
 	*
 	*  Wrapper for acf.hooks.doAction
 	*
@@ -926,9 +879,13 @@
 	*  @return	this
 	*/
 	
-	acf.doingAction = function( action ){
-		action = prefixAction(action);
-		return (actionHistory[ action ] === 1);
+	acf.currentAction = function(){
+		for( var k in actionHistory ) {
+			if( actionHistory[k] ) {
+				return k;
+			}
+		}
+		return false;
 	};
 	
 	/**
@@ -944,7 +901,7 @@
 	*/
 	
 	acf.addFilter = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		acf.hooks.addFilter.apply(this, arguments);
 		return this;
 	};
@@ -963,7 +920,7 @@
 	*/
 	
 	acf.removeFilter = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		acf.hooks.removeFilter.apply(this, arguments);
 		return this;
 	};
@@ -982,7 +939,7 @@
 	*/
 	
 	acf.applyFilters = function( action ){
-		action = prefixAction(action);
+		//action = prefixAction(action);
 		return acf.hooks.applyFilters.apply(this, arguments);
 	};
 	
@@ -1026,10 +983,13 @@
 	};
 */
 	
-	
 	// Preferences
-	var preferences = localStorage.getItem('acf');
-	preferences = preferences ? JSON.parse(preferences) : {};
+	// - use try/catch to avoid JS error if cookies are disabled on front-end form
+	try {
+		var preferences = JSON.parse(localStorage.getItem('acf')) || {};
+	} catch(e) {
+		var preferences = {};
+	}
 	
 	
 	/**
@@ -1305,7 +1265,7 @@
 		
 		// search
 		args.search = args.search || $el.attr('data-id');
-		args.replace = args.replace || acf.uniqid('acf');
+		args.replace = args.replace || acf.uniqid();
 		
 		// before
 		// - allow acf to modify DOM
@@ -1528,13 +1488,14 @@
 			return false
 		}
 		
-		// bail if select option does not exist
-		if( $input.is('select') && !$input.find('option[value="'+value+'"]').length ) {
-			return false;
-		}
-		
 		// update value
 		$input.val( value );
+		
+		// prevent select elements displaying blank value if option doesn't exist
+		if( $input.is('select') && $input.val() === null ) {
+			$input.val( prevValue );
+			return false;
+		}
 		
 		// update with trigger
 		if( silent !== true ) {
@@ -1707,12 +1668,12 @@
 		}
 		
 		// find and enable child inputs
-		// return false if 'any' inputs are still disabled
-		var results = true;
+		// return true if any inputs have changed
+		var results = false;
 		$el.find('[name]').each(function(){
 			var result = enable( $(this), lockKey );
-			if( !result ) {
-				results = false;
+			if( result ) {
+				results = true;
 			}
 		});
 		return results;
@@ -1770,12 +1731,12 @@
 		}
 		
 		// find and enable child inputs
-		// return false if 'any' inputs did not change
-		var results = true;
+		// return true if any inputs have changed
+		var results = false;
 		$el.find('[name]').each(function(){
 			var result = disable( $(this), lockKey );
-			if( !result ) {
-				results = false;
+			if( result ) {
+				results = true;
 			}
 		});
 		return results;
@@ -1850,7 +1811,7 @@
 		
 		// data
 		var data = {
-			url: url
+			url: value
 		};
 		
 		// modern browsers
@@ -2128,15 +2089,19 @@
 	
 	// Set up actions from events
 	$(document).ready(function(){
-		acf.doAction('ready', $(document));
+		acf.doAction('ready');
 	});
 	
 	$(window).on('load', function(){
-		acf.doAction('load', $(document));
+		acf.doAction('load');
 	});
 	
 	$(window).on('beforeunload', function(){
-		acf.doAction('unload', $(document));
+		acf.doAction('unload');
+	});
+	
+	$(window).on('resize', function(){
+		acf.doAction('resize');
 	});
 	
 	$(document).on('sortstart', function( event, ui ) {
@@ -2404,6 +2369,9 @@
 
 (function($, undefined){
 	
+	// Cached regex to split keys for `addEvent`.
+	var delegateEventSplitter = /^(\S+)\s*(.*)$/;
+  
 	/**
 	*  extend
 	*
@@ -2468,7 +2436,7 @@
 		this.cid = acf.uniqueId('acf');
 		
 		// set vars to avoid modifying prototype
-		this.data = $.extend({}, this.data);
+		this.data = $.extend(true, {}, this.data);
 		
 		// pass props to setup function
 		this.setup.apply(this, arguments);
@@ -2488,7 +2456,7 @@
 		
 		// initialize on action
 		if( this.wait && !acf.didAction(this.wait) ) {
-			acf.addAction(this.wait, initialize, this.priority, this);
+			this.addAction(this.wait, initialize);
 		
 		// initialize now
 		} else {
@@ -2508,9 +2476,6 @@
 		// jQuery element
 		$el: null,
 		
-		// class used to avoid nested event triggers
-		el: '',
-		
 		// Data specific to this instance
 		data: {},
 		
@@ -2522,6 +2487,9 @@
 		events: {},
 		actions: {},
 		filters: {},
+		
+		// class used to avoid nested event triggers
+		eventScope: '',
 		
 		// action to wait until initialize
 		wait: false,
@@ -2585,22 +2553,12 @@
 			// set data
 			this.data[ name ] = value;
 			
-			// silent
-			silent = silent || false;
-			if( silent ) return this;
-			
-			// busy
-			var busy = this.busy;
-			this.busy = true;
-			if( busy ) return this;
-			
 			// trigger events
-			this.changed = true;
-			this.trigger('changed:' + name, [value]);
-			this.trigger('changed', [name, value]);
-			
-			// reset busy
-			this.busy = false;
+			if( !silent ) {
+				this.changed = true;
+				this.trigger('changed:' + name, [value]);
+				this.trigger('changed', [name, value]);
+			}
 			
 			// return
 			return this;
@@ -2618,15 +2576,34 @@
 		*  @return	this
 		*/
 		
-		inherit: function( $el ){
+		inherit: function( data ){
 			
 			// allow jQuery
-			if( $el instanceof jQuery ) {
-				$.extend(this.data, $el.data());
+			if( data instanceof jQuery ) {
+				data = data.data();
 			}
+			
+			// extend
+			$.extend(this.data, data);
 			
 			// return
 			return this;
+		},
+		
+		/**
+		*  prop
+		*
+		*  mimics the jQuery prop function
+		*
+		*  @date	4/6/18
+		*  @since	5.6.9
+		*
+		*  @param	type $var Description. Default.
+		*  @return	type Description.
+		*/
+		
+		prop: function(){
+			return this.$el.prop.apply(this.$el, arguments);
 		},
 		
 		/**
@@ -2674,11 +2651,9 @@
 		addElements: function( elements ){
 			elements = elements || this.elements || null;
 			if( !elements || !Object.keys(elements).length ) return false;
-			this.time();
 			for( var i in elements ) {
 				this.addElement( i, elements[i] );
 			}
-			this.timeEnd();
 		},
 		
 		/**
@@ -2712,8 +2687,9 @@
 		addEvents: function( events ){
 			events = events || this.events || null;
 			if( !events ) return false;
-			for( var i in events ) {
-				this.on( i, events[i] );
+			for( var key in events ) {
+				var match = key.match(delegateEventSplitter);
+				this.on(match[1], match[2], events[key]);
 			}	
 		},
 		
@@ -2732,61 +2708,78 @@
 		removeEvents: function( events ){
 			events = events || this.events || null;
 			if( !events ) return false;
-			for( var i in events ) {
-				this.off( i );
+			for( var key in events ) {
+				var match = key.match(delegateEventSplitter);
+				this.off(match[1], match[2], events[key]);
 			}	
 		},
 		
 		/**
-		*  getEventScope
+		*  getEventTarget
 		*
-		*  Used during event callback to scope events.
+		*  Returns a jQUery element to tigger an event on
 		*
-		*  @date	9/4/18
+		*  @date	5/6/18
+		*  @since	5.6.9
+		*
+		*  @param	jQuery $el		The default jQuery element. Optional.
+		*  @param	string event	The event name. Optional.
+		*  @return	jQuery
+		*/
+		
+		getEventTarget: function( $el, event ){
+			return $el || this.$el || $(document);
+		},
+		
+		/**
+		*  validateEvent
+		*
+		*  Returns true if the event target's closest $el is the same as this.$el
+		*  Requires both this.el and this.$el to be defined
+		*
+		*  @date	5/6/18
 		*  @since	5.6.9
 		*
 		*  @param	type $var Description. Default.
 		*  @return	type Description.
 		*/
 		
-		getEventScope: function( e ){
-			if( this.el ) {
-				return $(e.target).closest( this.el );
+		validateEvent: function( e ){
+			if( this.eventScope ) {
+				return $( e.target ).closest( this.eventScope ).is( this.$el );
+			} else {
+				return true;
 			}
-			return false;
 		},
 		
 		/**
-		*  newEventCallback
+		*  proxyEvent
 		*
-		*  Returns a callback function allowing for model level customisation
+		*  Returns a new event callback function scoped to this model
 		*
-		*  @date	28/12/17
-		*  @since	5.6.5
+		*  @date	29/3/18
+		*  @since	5.6.9
 		*
-		*  @param	type $var Description. Default.
-		*  @return	type Description.
+		*  @param	function callback
+		*  @return	function
 		*/
 		
-		newEventCallback: function( model, callback ){
-			return function(e){
+		proxyEvent: function( callback ){
+			return this.proxy(function(e){
 				
-				// vars
-				var $el = $(this);
-				var args = acf.arrayArgs(arguments);
-				
-				// avoid scope creep
-				var scope = model.getEventScope(e);
-				if( scope && !scope.is(model.$el) ) {
+				// validate
+				if( !this.validateEvent(e) ) {
 					return;
 				}
-												
-				// add $el to arguments
-				args.push($el);
+				
+				// construct args
+				var args = acf.arrayArgs( arguments );
+				var extraArgs = args.slice(1);
+				var eventArgs = [ e, $(e.currentTarget) ].concat( extraArgs );
 				
 				// callback
-				model[ callback ].apply(model, args);
-			};
+				callback.apply(this, eventArgs);
+			});
 		},
 		
 		/**
@@ -2803,40 +2796,56 @@
 		*  @return	n/a
 		*/
 		
-		on: function( name, callback, context ){
+		on: function( a1, a2, a3, a4 ){
 			
 			// vars
-			var $el = context || this.$el || $(document);
-			var event = callback;
+			var $el, event, selector, callback, args;
 			
-			// event
-			if( typeof callback === 'string' ) {
-				event = this.newEventCallback( this, callback );
+			// find args
+			if( a1 instanceof jQuery ) {
+				
+				// 1. args( $el, event, selector, callback )
+				if( a4 ) {
+					$el = a1; event = a2; selector = a3; callback = a4;
+					
+				// 2. args( $el, event, callback )
+				} else {
+					$el = a1; event = a2; callback = a3;
+				}
+			} else {
+				
+				// 3. args( event, selector, callback )
+				if( a3 ) {
+					event = a1; selector = a2; callback = a3;
+				
+				// 4. args( event, callback )
+				} else {
+					event = a1; callback = a2;
+				}
 			}
+			
+			// element
+			$el = this.getEventTarget( $el );
+			
+			// modify callback
+			if( typeof callback === 'string' ) {
+				callback = this.proxyEvent( this[callback] );
+			}
+			
+			// modify event
+			event = event + '.' + this.cid;
 			
 			// args
-			var args = [ name, event ];
-			
-			// selector
-			var i = name.indexOf(' '); if( i > 0 ){
-				var selector = name.substr(i+1);
-				var name = name.substr(0,i);
-				args = [ name, selector, event ];
-			}
-			
-			// namespace event
-			args[0] += '.'+this.cid;
-			
-			// ready
-			if( name === 'ready' ) {
-				$el.ready( event );
-			
-			// on
+			if( selector ) {
+				args = [ event, selector, callback ];
 			} else {
-				$el.on.apply($el, args);
+				args = [ event, callback ];
 			}
+			
+			// on()
+			$el.on.apply($el, args);
 		},
-		
+				
 		/**
 		*  off
 		*
@@ -2850,25 +2859,49 @@
 		*  @return	n/a
 		*/
 		
-		off: function( name, context ){
+		off: function( a1, a2 ,a3 ){
 			
 			// vars
-			var $el = context || this.$el || $(document);
-			var args = [ name ];
-			
-			// selector
-			var i = name.indexOf(' '); if( i > 0 ){
-				var selector = name.substr(i+1);
-				var name = name.substr(0,i);
-				args = [ name, selector ];
+			var $el, event, selector, args;
+						
+			// find args
+			if( a1 instanceof jQuery ) {
+				
+				// 1. args( $el, event, selector )
+				if( a3 ) {
+					$el = a1; event = a2; selector = a3;
+				
+				// 2. args( $el, event )
+				} else {
+					$el = a1; event = a2;
+				}
+			} else {
+											
+				// 3. args( event, selector )
+				if( a2 ) {
+					event = a1; selector = a2;
+					
+				// 4. args( event )
+				} else {
+					event = a1;
+				}
 			}
 			
-			// namespace event
-			args[0] += '.'+this.cid;
+			// element
+			$el = this.getEventTarget( $el );
 			
-			// off
-			$el.off.apply($el, args);
+			// modify event
+			event = event + '.' + this.cid;
 			
+			// args
+			if( selector ) {
+				args = [ event, selector ];
+			} else {
+				args = [ event ];
+			}
+			
+			// off()
+			$el.off.apply($el, args);			
 		},
 		
 		/**
@@ -2884,10 +2917,13 @@
 		*  @return	n/a
 		*/
 		
-		trigger: function( name, args ){
-			var $el = this.$el || $(document);
-			args = args || [];
-			$el.trigger( name, args );
+		trigger: function( name, args, bubbles ){
+			var $el = this.getEventTarget();
+			if( bubbles ) {
+				$el.trigger.apply( $el, arguments );
+			} else {
+				$el.triggerHandler.apply( $el, arguments );
+			}
 			return this;
 		},
 		
@@ -2944,15 +2980,18 @@
 		*  @return	n/a
 		*/
 		
-		addAction: function( name, callback ){
+		addAction: function( name, callback, priority ){
+			//console.log('addAction', name, priority);
+			// defaults
+			priority = priority || this.priority;
 			
-			// vars
-			var data = name.split(' ');
-			var name = data[0] || '';
-			var priority = data[1] || this.priority;
+			// modify callback
+			if( typeof callback === 'string' ) {
+				callback = this[ callback ];
+			}
 			
 			// add
-			acf.addAction(name, this[ callback ], priority, this);
+			acf.addAction(name, callback, priority, this);
 			
 		},
 		
@@ -3006,15 +3045,18 @@
 		*  @return	n/a
 		*/
 		
-		addFilter: function( name, callback ){
+		addFilter: function( name, callback, priority ){
 			
-			// vars
-			var data = name.split(' ');
-			var name = data[0] || '';
-			var priority = data[1] || this.priority;
+			// defaults
+			priority = priority || this.priority;
+			
+			// modify callback
+			if( typeof callback === 'string' ) {
+				callback = this[ callback ];
+			}
 			
 			// add
-			acf.addFilter(name, this[ callback ], priority, this);
+			acf.addFilter(name, callback, priority, this);
 			
 		},
 		
@@ -3196,7 +3238,6 @@
 	// Global model storage
 	acf.models = {};
 	
-	
 	/**
 	*  acf.getInstance
 	*
@@ -3375,7 +3416,7 @@
 		},
 				
 		reset: function(){
-			this.changed = false;
+			this.stopListening();
 		},
 		
 		startListening: function(){
@@ -3538,6 +3579,11 @@
 			
 			// add new type
 			this.$el.addClass('-' + type);
+			
+			// backwards compatibility
+			if( type == 'error' ) {
+				this.$el.addClass('acf-error-message');
+			}
 		},
 		
 		html: function( html ){
@@ -3567,15 +3613,12 @@
 	};
 	
 	var noticeManager = new acf.Model({
-		
-		actions: {
-			'prepare': 'prepare',
-		},
-		
-		prepare: function(){
+		wait: 'prepare',
+		priority: 1,
+		initialize: function(){
 			
 			// vars
-			var $notice = $('.notice');
+			var $notice = $('.acf-admin-notice');
 			
 			// move to avoid WP flicker
 			if( $notice.length ) {
@@ -3603,14 +3646,13 @@
 		
 		setup: function( props ){
 			$.extend(this.data, props);
-			this.$el = $('#' + this.get('id'));
 		},
 		
 		initialize: function(){
 			
 			// vars
 			var id = this.get('id');
-			var $postbox = this.$el;
+			var $postbox = $('#' + id);
 			var $toggle = $('#' + id + '-hide');
 			var $label = $toggle.parent();
 			
@@ -3644,6 +3686,7 @@
 			var editLink = this.get('editLink');
 			var editTitle = this.get('editTitle');
 			if( editLink ) {
+				
 				$postbox.children('.hndle').append('<a href="' + editLink + '" class="dashicons dashicons-admin-generic acf-hndle-cog acf-js-tooltip" title="' + editTitle + '"></a>');
 			}
 		}
@@ -3827,16 +3870,20 @@
 			// add events
 			acf.Model.prototype.addEvents.apply(this);
 			
+			// vars
+			var $document = $(document);
+			var $target = this.get('target');
+			
 			// add global 'cancel' click event
 			// - use timeout to avoid the current 'click' event triggering the onCancel function
 			this.setTimeout(function(){
-				this.on( 'click', 'onCancel', $(document) );
+				this.on( $document, 'click', 'onCancel' );
 			});
 			
 			// add target 'confirm' click event
 			// - allow setting to control this feature
 			if( this.get('targetConfirm') ) {
-				this.on( 'click', 'onConfirm', this.get('target') );
+				this.on( $target, 'click', 'onConfirm' );
 			}
 		},
 		
@@ -3845,9 +3892,13 @@
 			// remove events
 			acf.Model.prototype.removeEvents.apply(this);
 			
+			// vars
+			var $document = $(document);
+			var $target = this.get('target');
+			
 			// remove custom events
-			this.off( 'click', $(document) );
-			this.off( 'click', this.get('target') );
+			this.off( $document, 'click' );
+			this.off( $target, 'click' );
 		},
 		
 		render: function(){
@@ -3994,7 +4045,7 @@
 		type: '',
 		
 		// class used to avoid nested event triggers
-		el: '.acf-field',
+		eventScope: '.acf-field',
 		
 		// initialize events on 'ready'
 		wait: 'ready',
@@ -4039,7 +4090,7 @@
 			if( val !== undefined ) {
 				return this.setValue( val );
 			} else {
-				return this.getValue();
+				return this.prop('disabled') ? null : this.getValue();
 			}
 		},
 		
@@ -4168,7 +4219,7 @@
 		*/
 		
 		getInputName: function(){
-			return this.$input().attr('name');
+			return this.$input().attr('name') || '';
 		},
 		
 		/**
@@ -4185,17 +4236,35 @@
 		
 		parent: function() {
 			
-			// find closest field
-			var $parent = this.$el.parent().closest('.acf-field');
+			// vars
+			var parents = this.parents();
 			
-			// exists
-			if( $parent.length ) {
-				return acf.getField( $parent );
+			// return
+			return parents.length ? parents[0] : false;
+		},
+		
+		/**
+		*  parents
+		*
+		*  description
+		*
+		*  @date	9/7/18
+		*  @since	5.6.9
+		*
+		*  @param	type $var Description. Default.
+		*  @return	type Description.
+		*/
+		
+		parents: function(){
 			
-			// does not exist
-			} else {
-				return false;
-			}
+			// vars
+			var $parents = this.$el.parents('.acf-field');
+			
+			// convert
+			var parents = acf.getFields( $parents );
+			
+			// return
+			return parents;
 		},
 		
 		show: function( lockKey, context ){
@@ -4205,6 +4274,7 @@
 			
 			// do action if visibility has changed
 			if( changed ) {
+				this.prop('hidden', false);
 				acf.doAction('show_field', this, context);
 			}
 			
@@ -4219,6 +4289,7 @@
 			
 			// do action if visibility has changed
 			if( changed ) {
+				this.prop('hidden', true);
 				acf.doAction('hide_field', this, context);
 			}
 			
@@ -4226,19 +4297,37 @@
 			return changed;
 		},
 		
-		enable: function( lockKey ){
+		enable: function( lockKey, context ){
 			
-			// enable field
-			acf.enable( this.$el, lockKey );
+			// enable field and store result
+			var changed = acf.enable( this.$el, lockKey );
+			
+			// do action if disabled has changed
+			if( changed ) {
+				this.prop('disabled', false);
+				acf.doAction('enable_field', this, context);
+			}
+			
+			// return
+			return changed;
 		},
 		
-		disable: function( lockKey ){
+		disable: function( lockKey, context ){
 			
-			// disable field
-			acf.disable( this.$el, lockKey );
+			// disabled field and store result
+			var changed = acf.disable( this.$el, lockKey );
+			
+			// do action if disabled has changed
+			if( changed ) {
+				this.prop('disabled', true);
+				acf.doAction('disable_field', this, context);
+			}
+			
+			// return
+			return changed;
 		},
 		
-		showEnable: function(){
+		showEnable: function( lockKey, context ){
 			
 			// enable
 			this.enable.apply(this, arguments);
@@ -4247,7 +4336,7 @@
 			return this.show.apply(this, arguments);
 		},
 		
-		hideDisable: function(){
+		hideDisable: function( lockKey, context ){
 			
 			// disable
 			this.disable.apply(this, arguments);
@@ -4311,7 +4400,18 @@
 			
 			// action
 			acf.doAction('valid_field', this);
-		}
+		},
+		
+		trigger: function( name, args, bubbles ){
+			
+			// allow some events to bubble
+			if( name == 'invalidField' ) {
+				bubbles = true;
+			}
+			
+			// return
+			return acf.Model.prototype.trigger.apply(this, [name, args, bubbles]);
+		},
 	});
 	
 	/**
@@ -4475,7 +4575,6 @@
 	acf.findFields = function( args ){
 		
 		// vars
-		args = args || {};
 		var selector = '.acf-field';
 		var $fields = false;
 		
@@ -4488,8 +4587,14 @@
 			parent: false,
 			sibling: false,
 			limit: false,
+			visible: false,
 			suppressFilters: false,
 		});
+		
+		// filter args
+		if( !args.suppressFilters ) {
+			args = acf.applyFilters('find_fields_args', args);
+		}
 		
 		// key
 		if( args.key ) {
@@ -4511,6 +4616,11 @@
 			selector += args.is;
 		}
 		
+		// visibility
+		if( args.visible ) {
+			selector += ':visible';
+		}
+		
 		// query
 		if( args.parent ) {
 			$fields = args.parent.find( selector );
@@ -4523,7 +4633,7 @@
 		// filter
 		if( !args.suppressFilters ) {
 			$fields = $fields.not('.acf-clone .acf-field');
-			$fields = acf.applyFilters('get_fields', $fields);
+			$fields = acf.applyFilters('find_fields', $fields);
 		}
 		
 		// limit
@@ -4657,6 +4767,128 @@
 	};
 	
 	/**
+	*  addGlobalFieldAction
+	*
+	*  Sets up callback logic for global field actions
+	*
+	*  @date	15/6/18
+	*  @since	5.6.9
+	*
+	*  @param	string action
+	*  @return	void
+	*/
+	
+	var addGlobalFieldAction = function( action ){
+		
+		// vars
+		var globalAction = action;
+		var pluralAction = action + '_fields';	// ready_fields
+		var singleAction = action + '_field';	// ready_field
+		
+		// global action
+		var globalCallback = function( $el /*, arg1, arg2, etc*/ ){
+			//console.log( action, arguments );
+			
+			// get args [$el, ...]
+			var args = acf.arrayArgs( arguments );
+			var extraArgs = args.slice(1);
+			
+			// find fields
+			var fields = acf.getFields({ parent: $el });
+			
+			// check
+			if( fields.length ) {
+				
+				// pluralAction
+				var pluralArgs = [ pluralAction, fields ].concat( extraArgs );
+				acf.doAction.apply(null, pluralArgs);
+			}
+		};
+		
+		// plural action
+		var pluralCallback = function( fields /*, arg1, arg2, etc*/ ){
+			//console.log( pluralAction, arguments );
+			
+			// get args [fields, ...]
+			var args = acf.arrayArgs( arguments );
+			var extraArgs = args.slice(1);
+			
+			// loop
+			fields.map(function( field, i ){
+				//setTimeout(function(){
+				// singleAction
+				var singleArgs = [ singleAction, field ].concat( extraArgs );
+				acf.doAction.apply(null, singleArgs);
+				//}, i * 100);
+			});
+		};
+		
+		// add actions
+		acf.addAction(globalAction, globalCallback);
+		acf.addAction(pluralAction, pluralCallback);
+		
+		// also add single action
+		addSingleFieldAction( action );
+	}
+	
+	/**
+	*  addSingleFieldAction
+	*
+	*  Sets up callback logic for single field actions
+	*
+	*  @date	15/6/18
+	*  @since	5.6.9
+	*
+	*  @param	string action
+	*  @return	void
+	*/
+	
+	var addSingleFieldAction = function( action ){
+		
+		// vars
+		var singleAction = action + '_field';	// ready_field
+		var singleEvent = action + 'Field';		// readyField
+		
+		// single action
+		var singleCallback = function( field /*, arg1, arg2, etc*/ ){
+			//console.log( singleAction, arguments );
+			
+			// get args [field, ...]
+			var args = acf.arrayArgs( arguments );
+			var extraArgs = args.slice(1);
+			
+			// action variations (ready_field/type=image)
+			var variations = ['type', 'name', 'key'];
+			variations.map(function( variation ){
+				
+				// vars
+				var prefix = '/' + variation + '=' + field.get(variation);
+				
+				// singleAction
+				args = [ singleAction + prefix , field ].concat( extraArgs );
+				acf.doAction.apply(null, args);
+			});
+			
+			// event
+			if( singleFieldEvents.indexOf(action) > -1 ) {
+				field.trigger(singleEvent, extraArgs);
+			}
+		};
+		
+		// add actions
+		acf.addAction(singleAction, singleCallback);	
+	}
+	
+	// vars
+	var globalFieldActions = [ 'prepare', 'ready', 'load', 'append', 'remove', 'sortstart', 'sortstop', 'show', 'hide', 'unload' ];
+	var singleFieldActions = [ 'valid', 'invalid', 'enable', 'disable', 'new' ];
+	var singleFieldEvents = [ 'remove', 'sortstart', 'sortstop', 'show', 'hide', 'unload', 'valid', 'invalid', 'enable', 'disable' ];
+	
+	// add
+	globalFieldActions.map( addGlobalFieldAction );
+	singleFieldActions.map( addSingleFieldAction );
+	
+	/**
 	*  fieldsEventManager
 	*
 	*  Manages field actions and events
@@ -4669,162 +4901,20 @@
 	*/
 	
 	var fieldsEventManager = new acf.Model({
-		
 		id: 'fieldsEventManager',
-		
 		events: {
-			'click .acf-field a[href="#"]': 'onClick',
-			'change .acf-field': 			'onChange'
+			'click .acf-field a[href="#"]':	'onClick',
+			'change .acf-field':			'onChange'
 		},
-		
-		initialize: function(){
-			
-			// actions
-			var actions = [
-				'prepare',
-				'ready',
-				'load',
-				'append',
-				'remove',
-				'sortstart',
-				'sortstop',
-				'show',
-				'hide',
-				'unload',
-				'valid',
-				'invalid'
-			];
-			
-			// loop
-			actions.map(function( action ){
-				this.addFieldActions( action );
-			}, this);
-		},
-		
-		addFieldActions: function( action ){
-			//console.log( 'addFieldActions', action );
-			
-			// vars
-			var pluralAction = action + '_fields';	// ready_fields
-			var singleAction = action + '_field';	// ready_field
-			var singleEvent = action + 'Field';		// readyField
-			
-			// global action
-			var callback = function( $el /*, arg1, arg2, etc*/ ){
-				//console.log( action, arguments );
-				
-				// get args [$el, ...]
-				var args = acf.arrayArgs( arguments );
-				var extraArgs = args.slice(1);
-				
-				// vars
-				var fields = acf.getFields({ parent: $el });
-				
-				// check
-				if( fields.length ) {
-					
-					// pluralAction
-					args = [ pluralAction, fields ].concat( extraArgs );
-					acf.doAction.apply(null, args);
-				}
-			};
-			
-			// plural action
-			var pluralCallback = function( fields /*, arg1, arg2, etc*/ ){
-				//console.log( pluralAction, arguments );
-				
-				// get args [fields, ...]
-				var args = acf.arrayArgs( arguments );
-				var extraArgs = args.slice(1);
-				
-				// loop
-				fields.map(function( field ){
-					
-					// singleAction
-					args = [ singleAction, field ].concat( extraArgs );
-					acf.doAction.apply(null, args);
-				});
-			};
-			
-			// single action
-			var singleCallback = function( field /*, arg1, arg2, etc*/ ){
-				//console.log( singleAction, arguments );
-				
-				// get args [field, ...]
-				var args = acf.arrayArgs( arguments );
-				var extraArgs = args.slice(1);
-				
-				// action variations (ready_field/type=image)
-				var variations = ['type', 'name', 'key'];
-				variations.map(function( variation ){
-					
-					// vars
-					var prefix = '/' + variation + '=' + field.get(variation);
-					
-					// singleAction
-					args = [ singleAction + prefix , field ].concat( extraArgs );
-					acf.doAction.apply(null, args);
-				});
-				
-				// event
-				field.trigger(singleEvent, extraArgs);
-			};
-			
-			// add actions
-			acf.addAction(action, callback);
-			acf.addAction(pluralAction, pluralCallback);
-			acf.addAction(singleAction, singleCallback);
-		},
-		
-		// events
 		onClick: function( e ){
+			
+			// prevent default of any link with an href of #
 			e.preventDefault();
 		},
-		
-		onChange: function( e, $el ){
-			var $input = $(e.target);
-			var field = acf.getField($el);
-			acf.doAction('change_field', field, $input);
-			acf.doAction('change', $input);
-		}
-	});
-	
-	/**
-	*  acf.getAllFields
-	*
-	*  description
-	*
-	*  @date	1/2/18
-	*  @since	5.6.5
-	*
-	*  @param	type $var Description. Default.
-	*  @return	type Description.
-	*/
-	
-	acf.getAllFields = function(){
-		
-		// check
-		if( allFields.has('fields') ) {
-			return allFields.get('fields');
-		}
-		
-		// get fields
-		var fields = acf.getFields();
-		
-		// store
-		allFields.set('fields', fields);
-		
-		// return
-		return fields;
-	};
-	
-	var allFields = new acf.Model({
-		actions: {
-			'append':	'reset',
-			'remove': 	'reset'
-		},
-		reset: function(){
-			this.set('fields', null);
+		onChange: function(){
+			
+			// preview hack allows post to save with no title or content
+			$('#_acf_changed').val(1);
 		}
 	});
 	
@@ -4838,7 +4928,7 @@
 		
 		type: 'accordion',
 		
-		wait: 'prepare',
+		wait: '',
 		
 		$control: function(){
 			return this.$('.acf-fields:first');
@@ -4990,9 +5080,6 @@
 					accordionManager.close( $(this) );
 				});
 			}
-			
-			// action
-			acf.doAction('refresh', $el);
 		},
 		
 		close: function( $el ){
@@ -5031,7 +5118,6 @@
 			
 			// open accordion
 			this.open( $el );
-			
 		},
 		
 		onUnload: function( e ){
@@ -5054,7 +5140,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -5100,7 +5186,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -5198,11 +5284,13 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
 		type: 'color_picker',
+		
+		wait: 'load',
 		
 		$control: function(){
 			return this.$('.acf-color-picker');
@@ -5252,7 +5340,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -5360,12 +5448,9 @@
 	
 	// manager
 	var datePickerManager = new acf.Model({
-		
-		actions: {
-			'ready 5': 'onReady'
-		},
-		
-		onReady: function(){
+		priority: 5,
+		wait: 'ready',
+		initialize: function(){
 			
 			// vars
 			var locale = acf.get('locale');
@@ -5413,7 +5498,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.models.DatePickerField.extend({
 		
@@ -5462,12 +5547,9 @@
 	
 	// manager
 	var dateTimePickerManager = new acf.Model({
-		
-		actions: {
-			'ready 5': 'onReady'
-		},
-		
-		onReady: function(){
+		priority: 5,
+		wait: 'ready',
+		initialize: function(){
 			
 			// vars
 			var locale = acf.get('locale');
@@ -5516,7 +5598,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -5549,20 +5631,16 @@
 			return this.$('.search');
 		},
 		
+		$canvas: function(){
+			return this.$('.canvas');
+		},
+		
 		addClass: function( name ){
 			this.$control().addClass( name );
 		},
 		
 		removeClass: function( name ){
 			this.$control().removeClass( name );
-		},
-		
-		showLoading: function(){
-			this.addClass('-loading');
-		},
-		
-		hideLoading: function(){
-			this.removeClass('-loading');
 		},
 		
 		getValue: function(){
@@ -5581,7 +5659,7 @@
 			
 			// return false if no address
 			if( !val.address ) {
-				return false;
+				val = false;
 			}
 			
 			// return
@@ -5602,6 +5680,11 @@
 				acf.val( this.$input(name), val[name] );
 			}
 			
+			// return false if no address
+			if( !val.address ) {
+				val = false;
+			}
+			
 			// render
 			this.renderVal( val );
 		},
@@ -5610,13 +5693,13 @@
 			
 		    // has value
 		    if( val ) {
-			     this.$control().addClass('-value');
+			     this.addClass('-value');
 			     this.setPosition( val.lat, val.lng );
 			     this.map.marker.setVisible( true );
 			     
 		    // no value
 		    } else {
-			     this.$control().removeClass('-value');
+			     this.removeClass('-value');
 			     this.map.marker.setVisible( false );
 		    }
 		    
@@ -5669,10 +5752,6 @@
 			return this.$search().val();
 		},
 		
-		getCanvas: function(){
-			return this.$('.canvas');
-		},
-		
 		initialize: function(){
 			
 			// bail early if too early
@@ -5710,7 +5789,7 @@
 		    	autocomplete: {}
         	};
         	mapArgs = acf.applyFilters('google_map_args', mapArgs, this);       	
-        	var map = new google.maps.Map( this.getCanvas()[0], mapArgs );
+        	var map = new google.maps.Map( this.$canvas()[0], mapArgs );
         	this.addMapEvents( map, this );
         	
         	
@@ -5750,15 +5829,17 @@
 				// bind
 				autocomplete.bindTo('bounds', map);
 				
-				// event
+				// autocomplete event place_changed is triggered each time the input changes
+				// customize the place object with the current "search value" to allow users controll over the address text
 				google.maps.event.addListener(autocomplete, 'place_changed', function() {
-				    field.setPlace( this.getPlace() );
+					var place = this.getPlace();
+					place.address = field.getSearchVal();
+				    field.setPlace( place );
 				});
 	        }
 	        
 	        // click
 	        google.maps.event.addListener( map, 'click', function( e ) {
-				
 				// vars
 				var lat = e.latLng.lat();
 				var lng = e.latLng.lng();
@@ -5772,7 +5853,6 @@
 			
 			// dragend
 		    google.maps.event.addListener( marker, 'dragend', function(){
-		    	
 		    	// vars
 				var position = this.getPosition();
 				var lat = position.lat();
@@ -5841,7 +5921,7 @@
 			// vars
 			var lat = place.geometry.location.lat();
 			var lng = place.geometry.location.lng();
-			var address = place.formatted_address;
+			var address = place.address || place.formatted_address;
 			
 			// update
 			this.setValue({
@@ -5877,7 +5957,7 @@
 		    $wrap.addClass('-loading');
 		    
 		    // callback
-		    var callback = $.proxy(function( results, status ){
+		    var callback = this.proxy(function( results, status ){
 			    
 			    // remove class
 			    $wrap.removeClass('-loading');
@@ -5894,7 +5974,7 @@
 				} else {
 					lat = results[0].geometry.location.lat();
 					lng = results[0].geometry.location.lng();
-					address = results[0].formatted_address;
+					//address = results[0].formatted_address;
 				}
 				
 				// update val
@@ -5906,7 +5986,7 @@
 				
 				//acf.doAction('google_map_geocode_results', results, status, this.$el, this);
 				
-		    }, this);
+		    });
 		    
 		    // query
 		    api.geocoder.geocode({ 'address' : address }, callback);
@@ -5932,8 +6012,8 @@
 			    $wrap.removeClass('-loading');
 			    
 			    // vars
-				var lat = position.coords.latitude;
-			    var lng = position.coords.longitude;
+				var lat = results.coords.latitude;
+			    var lng = results.coords.longitude;
 			    
 			    // search;
 			    this.searchPosition( lat, lng );
@@ -5970,7 +6050,9 @@
 			// timeout to allow onClickLocate event
 			this.setTimeout(function(){
 				this.removeClass('-search');
-				this.addClass('-value');
+				if( $el.val() ) {
+					this.addClass('-value');
+				}
 			}, 100);			
 		},
 		
@@ -6406,7 +6488,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -6598,7 +6680,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -6762,7 +6844,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -6786,8 +6868,8 @@
 		
 		getValue: function(){
 			var val = this.$input().val();
-			if( val === 'other' ) {
-				val = this.inputText().val();
+			if( val === 'other' && this.get('other_choice') ) {
+				val = this.$inputText().val();
 			}
 			return val;
 		},
@@ -6831,7 +6913,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -6874,7 +6956,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -6885,7 +6967,8 @@
 			'change [data-filter]': 				'onChangeFilter',
 			'keyup [data-filter]': 					'onChangeFilter',
 			'click .choices-list .acf-rel-item': 	'onClickAdd',
-			'click [data-name="remove_item"]': 		'onClickRemove'
+			'click [data-name="remove_item"]': 		'onClickRemove',
+			'mouseover': 							'onHover'
 		},
 		
 		$control: function(){
@@ -6931,7 +7014,7 @@
 			].join('');
 		},
 		
-		initialize: function(){
+		addSortable: function( self ){
 			
 			// sortable
 			this.$list('values').sortable({
@@ -6939,14 +7022,16 @@
 				forceHelperSize:		true,
 				forcePlaceholderSize:	true,
 				scroll:					true,
-				update:	$.proxy(function(){
-					this.$input().trigger('change');
-				}, this)
+				update:	function(){
+					self.$input().trigger('change');
+				}
 			});
+		},
+		
+		initialize: function(){
 			
 			// scroll
-			var $list = this.$list('choices');
-			var onScroll = $.proxy(function(e){
+			var onScroll = this.proxy(function(e){
 				
 				// bail early if no more results
 				if( this.get('loading') || !this.get('more') ) {
@@ -6954,6 +7039,7 @@
 				}
 				
 				// Scrolled to bottom
+				var $list = this.$list('choices');
 				var scrollTop = Math.ceil( $list.scrollTop() );
 				var scrollHeight = Math.ceil( $list[0].scrollHeight );
 				var innerHeight = Math.ceil( $list.innerHeight() );
@@ -6967,13 +7053,21 @@
 					this.fetch();
 				}
 				
-			}, this);
+			});
 			
 			this.$list('choices').scrollTop(0).on('scroll', onScroll);
 			
 			// fetch
 			this.fetch();
+		},
+		
+		onHover: function( e ){
 			
+			// only once
+			$().off(e);
+			
+			// add sortable
+			this.addSortable( this );
 		},
 		
 		onKeypressFilter: function( e, $el ){
@@ -7024,7 +7118,12 @@
 			
 			// validate
 			if( max > 0 && val && val.length >= max ) {
-				alert( acf.__('Maximum values reached ( {max} values )').replace('{max}', max) );
+				
+				// add notice
+				this.showNotice({
+					text: acf.__('Maximum values reached ( {max} values )').replace('{max}', max),
+					type: 'warning'
+				});
 				return false;
 			}
 			
@@ -7234,13 +7333,15 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
 		type: 'select',
 		
 		select2: false,
+		
+		wait: 'load',
 		
 		events: {
 			'removeField': 'onRemove'
@@ -7290,7 +7391,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	// vars
 	var CONTEXT = 'tab';
@@ -7299,7 +7400,7 @@
 		
 		type: 'tab',
 		
-		wait: 'prepare',
+		wait: '',
 		
 		tabs: false,
 		
@@ -7310,19 +7411,7 @@
 		},
 		
 		getFields: function(){
-			
-			// query
-			var $fields = this.findFields();
-			
-			// loop
-			var fields = [];
-			$fields.each(function(){
-				var field = acf.getField( $(this) );
-				fields.push( field );
-			});
-			
-			// return
-			return fields;
+			return acf.getFields( this.findFields() );
 		},
 		
 		findTabs: function(){
@@ -7464,10 +7553,15 @@
 		
 		active: false,
 		
+		actions: {
+			'refresh': 'onRefresh'
+		},
+		
 		data: {
 			before: false,
 			placement: 'top',
 			index: 0,
+			initialized: false,
 		},
 		
 		setup: function( settings ){
@@ -7480,11 +7574,12 @@
 			this.active = false;
 			
 			// vars
+			var placement = this.get('placement');
 			var $before = this.get('before');
 			var $parent = $before.parent();
 			
 			// add sidebar for left placement
-			if( this.get('placement') == 'left' && $parent.hasClass('acf-fields') ) {
+			if( placement == 'left' && $parent.hasClass('acf-fields') ) {
 				$parent.addClass('-sidebar');
 			}
 			
@@ -7492,18 +7587,15 @@
 			if( $before.is('tr') ) {
 				this.$el = $('<tr class="acf-tab-wrap"><td colspan="2"><ul class="acf-hl acf-tab-group"></ul></td></tr>');
 			} else {
-				this.$el = $('<div class="acf-tab-wrap -' + this.get('placement') + '"><ul class="acf-hl acf-tab-group"></ul></div>');
+				this.$el = $('<div class="acf-tab-wrap -' + placement + '"><ul class="acf-hl acf-tab-group"></ul></div>');
 			}
 			
 			// append
 			$before.before( this.$el );
 			
 			// set index
-			this.set('index', i);
+			this.set('index', i, true);
 			i++;
-			
-			// render after conditional logic / fields added
-			this.setTimeout(this.initializeTabs, 0);	
 		},
 		
 		initializeTabs: function(){
@@ -7526,6 +7618,9 @@
 			} else {
 				this.closeTabs();
 			}
+			
+			// set local variable used by tabsManager
+			this.set('initialized', true);
 		},
 		
 		getVisible: function(){
@@ -7647,7 +7742,26 @@
 			
 			// return
 			return tab;
-		}		
+		},
+		
+		onRefresh: function(){
+			
+			// only for left placements
+			if( this.get('placement') !== 'left' ) {
+				return;
+			}
+			
+			// vars
+			var $parent = this.$el.parent();
+			var $list = this.$el.children('ul');
+			var attribute = $parent.is('td') ? 'height' : 'min-height';
+			
+			// find height (minus 1 for border-bottom)
+			var height = $list.position().top + $list.outerHeight(true) - 1;
+			
+			// add css
+			$parent.css(attribute, height);
+		}	
 	});
 	
 	var Tab = acf.Model.extend({
@@ -7713,13 +7827,13 @@
 	
 	var tabsManager = new acf.Model({
 		
-		events: {
-			'invalidField .acf-field': 'onInvalidField'
-		},
+		priority: 50,
 		
 		actions: {
-			'refresh': 	'refresh',
-			'unload':	'onUnload'
+			'prepare':			'render',
+			'append':			'render',
+			'unload':			'onUnload',
+			'invalid_field':	'onInvalidField'
 		},
 		
 		findTabs: function(){
@@ -7730,41 +7844,20 @@
 			return acf.getInstances( this.findTabs() );
 		},
 		
-		refresh: function( $el ){
-			
-			// loop
-			this.findTabs().each(function(){
-				
-				// vars
-				var $wrap = $(this);
-				
-				// fix left aligned min-height
-				if( $wrap.hasClass('-left') ) {
-					
-					// vars
-					var $parent = $wrap.parent();
-					var attribute = $parent.is('td') ? 'height' : 'min-height';
-					
-					// find height (minus 1 for border-bottom)
-					var height = $wrap.position().top + $wrap.children('ul').outerHeight(true) - 1;
-					
-					// add css
-					$parent.css(attribute, height);
-					
+		render: function( $el ){
+			this.getTabs().map(function( tabs ){
+				if( !tabs.get('initialized') ) {
+					tabs.initializeTabs();
 				}
-						
 			});
 		},
 		
-		onInvalidField: function( e, $field ){
+		onInvalidField: function( field ){
 			
 			// bail early if busy
 			if( this.busy ) {
 				return;
 			}
-			
-			// vars
-			var field = acf.getField( $field );
 			
 			// ignore if not hidden by tab
 			if( !field.hiddenByTab ) {
@@ -7804,7 +7897,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.models.SelectField.extend({
 		type: 'post_object',	
@@ -7814,7 +7907,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.models.SelectField.extend({
 		type: 'page_link',	
@@ -7824,7 +7917,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.models.SelectField.extend({
 		type: 'user',	
@@ -7834,13 +7927,19 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
 		type: 'taxonomy',
 		
+		data: {
+			'ftype': 'select'
+		},
+		
 		select2: false,
+		
+		wait: 'load',
 		
 		events: {
 			'click a[data-name="add"]': 'onClickAdd',
@@ -7947,7 +8046,7 @@
 				$name.focus();
 				
 				// submit form
-				popup.on('submit form', step3);
+				popup.on('submit', 'form', step3);
 			};
 			
 			// step 3.
@@ -8007,7 +8106,8 @@
 						type: 'success',
 						text: acf.getAjaxMessage(json),
 						target: $form,
-						timeout: 2000
+						timeout: 2000,
+						dismiss: false
 					});
 					
 				} else {
@@ -8017,7 +8117,8 @@
 						type: 'error',
 						text: acf.getAjaxError(json),
 						target: $form,
-						timeout: 2000
+						timeout: 2000,
+						dismiss: false
 					});
 				}
 				
@@ -8076,7 +8177,7 @@
 		appendTermCheckbox: function( term ){
 			
 			// vars
-			var name = this.$input().attr('name');
+			var name = this.$('[name]:first').attr('name');
 			var $ul = this.$('ul:first');
 			
 			// allow multiple selection
@@ -8147,7 +8248,7 @@
 		
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.models.DatePickerField.extend({
 		
@@ -8225,7 +8326,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -8321,7 +8422,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
@@ -8347,6 +8448,11 @@
 			
 			// vars
 			var val = this.val();
+			
+			// bail early if no val
+			if( !val ) {
+				return false;
+			}
 			
 			// url
 			if( val.indexOf('://') !== -1 ) {
@@ -8381,13 +8487,20 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	var Field = acf.Field.extend({
 		
 		type: 'wysiwyg',
 		
 		wait: 'load',
+		
+		events: {
+			'mousedown .acf-editor-wrap.delay':	'onMousedown',
+			'sortstartField': 'disableEditor',
+			'sortstopField': 'enableEditor',
+			'removeField': 'disableEditor'
+		},
 		
 		$control: function(){
 			return this.$('.acf-editor-wrap');
@@ -8397,40 +8510,33 @@
 			return this.$('textarea');
 		},
 		
+		getMode: function(){
+			return this.$control().hasClass('tmce-active') ? 'visual' : 'text';
+		},
+		
 		initialize: function(){
 			
-			// vars
-			var $wrap = this.$control();
-			var $textarea = this.$input();
-			
-			// get options
-			this.set('mode', $wrap.hasClass('tmce-active') ? 'visual' : 'text');
-			this.set('id', $textarea.attr('id'));
-			
-			// bail early if delay
-			if( $wrap.hasClass('delay') ) {
-				this.on('mousedown .acf-editor-wrap.delay', 'onMousedown');
-				return;
+			// initializeEditor if no delay
+			if( !this.$control().hasClass('delay') ) {
+				this.initializeEditor();
 			}
-			
-			// initializeEditor
-			this.initializeEditor();
 		},
 		
 		initializeEditor: function(){
 			
 			// vars
 			var $wrap = this.$control();
+			var $textarea = this.$input();
 			var args = {
 				tinymce:	true,
 				quicktags:	true,
 				toolbar:	this.get('toolbar'),
-				mode:		this.get('mode'),
+				mode:		this.getMode(),
 				field:		this
 			};
 			
 			// generate new id
-			var oldId = this.get('id');
+			var oldId = $textarea.attr('id');
 			var newId = acf.uniqueId('acf-editor-');
 			
 			// rename
@@ -8442,7 +8548,7 @@
 			});	
 			
 			// update id
-			this.set('id', newId);
+			this.set('id', newId, true);
 			
 			// initialize
 			acf.tinymce.initialize( newId, args );
@@ -8462,24 +8568,14 @@
 			this.initializeEditor();
 		},
 		
-		enable: function(){
-			
-			// enable
-			acf.Field.prototype.enable.apply(this, arguments);
-			
-			// enable tinymce
-			if( this.get('mode') == 'visual' ) {
+		enableEditor: function(){
+			if( this.getMode() == 'visual' ) {
 				acf.tinymce.enable( this.get('id') );
 			}
 		},
 		
-		disable: function(){
-			
-			// disable tinymce
+		disableEditor: function(){
 			acf.tinymce.destroy( this.get('id') );
-			
-			// disable
-			acf.Field.prototype.disable.apply(this, arguments);
 		}	
 	});
 	
@@ -8519,21 +8615,22 @@
 		},
 		
 		events: {
-			'change':	'onChange',
-			'keyup':	'onChange'
+			'change':		'change',
+			'keyup':		'change',
+			'enableField':	'change',
+			'disableField':	'change'
 		},
 		
 		setup: function( props ){
-			
-			// data
 			$.extend(this.data, props);
-			
-			// set $el for change event
-			this.$el = this.get('field').$el;
 		},
 		
-		onChange: function( e, $el ){
-			this.get('conditions').onChange( e, $el );
+		getEventTarget: function( $el, event ){
+			return $el || this.get('field').$el;
+		},
+		
+		change: function( e, $el ){
+			this.get('conditions').change( e );
 		},
 		
 		match: function( rule, field ){
@@ -8742,7 +8839,7 @@
 	var CONTEXT = 'conditional_logic';
 	
 	/**
-	*  acf.conditions
+	*  conditionsManager
 	*
 	*  description
 	*
@@ -8753,38 +8850,21 @@
 	*  @return	type Description.
 	*/
 	
-	acf.conditions = new acf.Model({
+	var conditionsManager = new acf.Model({
 		
-		// run actions later
-		priority: 20,
+		id: 'conditionsManager',
 		
-		// storage for model types
-		types: [],
+		priority: 20, // run actions later
 		
 		actions: {
-			'prepare':			'render',
-			'append':			'render',
-			'prepare_fields':	'renderFields',
-			'append_fields':	'renderFields',
-		},
-				
-		renderFields: function( fields ){
-			
-			// loop
-			fields.map(function( field ){
-				
-				// if has conditions
-				if( field.has('conditions') ) {
-					
-					// render conditions
-					field.getConditions().render();
-				}
-			});
+			'new_field':		'onNewField',
 		},
 		
-		render: function( $el ){
-			acf.doAction('refresh', $el);
-		}
+		onNewField: function( field ){
+			if( field.has('conditions') ) {
+				field.getConditions().render();
+			}
+		},
 	});
 	
 	/**
@@ -8799,51 +8879,59 @@
 	*  @return	type Description.
 	*/
 	
-	acf.Field.prototype.getField = function( key ){
-		
-		//console.time('getField');
-		
-		// filter
-		var fields = acf.getAllFields().filter(function( field ){
-			return field.get('key') == key;
+	var getSiblingField = function( field, key ){
+			
+		// find sibling (very fast)
+		var fields = acf.getFields({
+			key: key,
+			sibling: field.$el,
+			suppressFilters: true,
 		});
 		
-		// bail early if no fields
+		// find sibling-children (fast)
+		// needed for group fields, accordions, etc
 		if( !fields.length ) {
-			//console.timeEnd('getField');
-			return false;
+			fields = acf.getFields({
+				key: key,
+				parent: field.$el.parent(),
+				suppressFilters: true,
+			});
 		}
-		
-		// if one field was found, this is the only field
-		if( fields.length == 1 ) {
-			//console.timeEnd('getField');
+		 
+		// return
+		if( fields.length ) {
 			return fields[0];
 		}
+		return false;
+	};
+	
+	acf.Field.prototype.getField = function( key ){
 		
-		// multiple fields were found
-		var index = 0;
-		var overlap = 0;
-		var inputName = this.getInputName();
+		// get sibling field
+		var field = getSiblingField( this, key );
 		
-		// loop
-		fields.map(function( thisField, thisIndex ){
+		// return early
+		if( field ) {
+			return field;
+		}
+		
+		// move up through each parent and try again
+		var parents = this.parents();
+		for( var i = 0; i < parents.length; i++ ) {
 			
-			// vars
-			var thisInputName = thisField.getInputName();
-			var thisOverlap = acf.strMatch( inputName, thisInputName );
+			// get sibling field
+			field = getSiblingField( parents[i], key );
 			
-			// compare
-			if( thisOverlap > overlap ) {
-				index = thisIndex;
-				overlap = thisOverlap;
+			// return early
+			if( field ) {
+				return field;
 			}
-		});
-		
-		//console.timeEnd('getField');
+		}
 		
 		// return
-		return fields[ index ];
+		return false;
 	};
+	
 	
 	/**
 	*  acf.Field.prototype.getConditions
@@ -8880,31 +8968,24 @@
 	*  @param	type $var Description. Default.
 	*  @return	type Description.
 	*/
-	
+	var timeout = false;
 	var Conditions = acf.Model.extend({
 		
-		// data
+		id: 'Conditions',
+		
 		data: {
-			field: false
+			field:		false,	// The field with "data-conditions" (target).
+			timeStamp:	false,	// Reference used during "change" event.
+			groups:		[],		// The groups of condition instances.
 		},
 		
-		// groups
-		groups: [],
-		
-		// setup
 		setup: function( field ){
 			
 			// data
-			this.set('field', field);
-			
-			// copy from proto to instance
-			this.groups = [];
+			this.data.field = field;
 			
 			// vars
 			var conditions = field.get('conditions');
-			
-			// bail early if no conditions
-			if( !conditions ) return;
 			
 			// detect groups
 			if( conditions instanceof Array ) {
@@ -8928,23 +9009,18 @@
 			}
 		},
 		
-		onChange: function( e, $el ){
+		change: function( e ){
 			
 			// this function may be triggered multiple times per event due to multiple condition classes
 			// compare timestamp to allow only 1 trigger per event
 			if( this.get('timeStamp') === e.timeStamp ) {
 				return false;
 			} else {
-				this.set('timeStamp', e.timeStamp);
+				this.set('timeStamp', e.timeStamp, true);
 			}
 			
 			// render condition and store result
 			var changed = this.render();
-			
-			// do action if vsibility has changed
-			if( changed ) {
-				acf.do_action('refresh', this.get('field').$el.parent());
-			}
 		},
 		
 		render: function(){
@@ -8985,29 +9061,29 @@
 		},
 		
 		hasGroups: function(){
-			return this.groups != null;
+			return this.data.groups != null;
 		},
 		
 		getGroups: function(){
-			return this.groups;
+			return this.data.groups;
 		},
 		
 		addGroup: function(){
 			var group = [];
-			this.groups.push( group );
+			this.data.groups.push( group );
 			return group;
 		},
 		
 		hasGroup: function( i ){
-			return this.groups[i] != null;
+			return this.data.groups[i] != null;
 		},
 		
 		getGroup: function( i ){
-			return this.groups[i];
+			return this.data.groups[i];
 		},
 		
 		removeGroup: function( i ){
-			this.groups[i].delete;
+			this.data.groups[i].delete;
 			return this;
 		},
 		
@@ -9054,7 +9130,7 @@
 			rule = rule || 0;
 			group = group || 0;
 			
-			return this.groups[ group ][ rule ];
+			return this.data.groups[ group ][ rule ];
 		},
 		
 		removeRule: function(){
@@ -9076,12 +9152,16 @@
 		return ( parseString(v1).toLowerCase() === parseString(v2).toLowerCase() );
 	};
 	
+	var isEqualToNumber = function( v1, v2 ){
+		return ( parseFloat(v1) === parseFloat(v2) );
+	};
+	
 	var isGreaterThan = function( v1, v2 ){
-		return ( parseInt(v1) > parseInt(v2) );
+		return ( parseFloat(v1) > parseFloat(v2) );
 	};
 	
 	var isLessThan = function( v1, v2 ){
-		return ( parseInt(v1) < parseInt(v2) );
+		return ( parseFloat(v1) < parseFloat(v2) );
 	};
 	
 	var inArray = function( v1, array ){
@@ -9093,6 +9173,15 @@
 		
 		return (array.indexOf( v1 ) > -1);
 	}
+	
+	var containsString = function( haystack, needle ){
+		return ( parseString(haystack).indexOf( parseString(needle) ) > -1 );
+	};
+	
+	var matchesPattern = function( v1, pattern ){
+		var regexp = new RegExp(parseString(pattern), 'gi');
+		return parseString(v1).match( regexp );
+	};
 	
 	/**
 	*  hasValue
@@ -9115,7 +9204,7 @@
 			return (field.val() ? true : false);
 		},
 		choices: function( fieldObject ){
-			return '<input type="text" disabled="disabled" />';
+			return '<input type="text" disabled="" />';
 		}
 	});
 	
@@ -9164,7 +9253,11 @@
 		label: __('Value is equal to'),
 		fieldTypes: [ 'text', 'textarea', 'number', 'range', 'email', 'url', 'password' ],
 		match: function( rule, field ){
-			return isEqualTo( rule.value, field.val() );
+			if( $.isNumeric(rule.value) ) {
+				return isEqualToNumber( rule.value, field.val() );
+			} else {
+				return isEqualTo( rule.value, field.val() );
+			}
 		},
 		choices: function( fieldObject ){
 			return '<input type="text" />';
@@ -9214,8 +9307,7 @@
 		label: __('Value matches pattern'),
 		fieldTypes: [ 'text', 'textarea', 'email', 'url', 'password', 'wysiwyg' ],
 		match: function( rule, field ){
-			var regexp = new RegExp(rule.value, 'gi');
-			return field.val().match( regexp );
+			return matchesPattern( field.val(), rule.value );
 		},
 		choices: function( fieldObject ){
 			return '<input type="text" placeholder="[a-z0-9]" />';
@@ -9242,7 +9334,7 @@
 		label: __('Value contains'),
 		fieldTypes: [ 'text', 'textarea', 'number', 'email', 'url', 'password', 'wysiwyg', 'oembed' ],
 		match: function( rule, field ){
-			return field.val().indexOf( rule.value ) > -1;
+			return containsString( field.val(), rule.value );
 		},
 		choices: function( fieldObject ){
 			return '<input type="text" />';
@@ -9271,7 +9363,7 @@
 			return [
 				{
 					id:		1,
-					text:	'Checked'
+					text:	__('Checked')
 				}
 			];
 		},
@@ -9299,7 +9391,7 @@
 			return [
 				{
 					id:		1,
-					text:	'Checked'
+					text:	__('Checked')
 				}
 			];
 		},
@@ -9336,10 +9428,10 @@
 			
 			// vars
 			var choices = [];
-			var lines = fieldObject.findSetting('choices textarea').val().split("\n");	
+			var lines = fieldObject.$setting('choices textarea').val().split("\n");	
 			
 			// allow null
-			if( fieldObject.findInput('allow_null').prop('checked') ) {
+			if( fieldObject.$input('allow_null').prop('checked') ) {
 				choices.push({
 					id: '',
 					text: __('Null')
@@ -9391,23 +9483,6 @@
 	});
 	
 	acf.registerConditionType( SelectNotEqualTo );
-	
-/*
-	var ContainsAtLeast = acf.Condition.extend({
-		type: 'ContainsAtLeast',
-		operator: '>=',
-		label: 'contains at least',
-		fieldTypes: [ 'select', 'checkbox' ],
-		match: function( rule, field ){
-			return field.val().length >= parseInt(rule.value);
-		},
-		choices: function( fieldObject ){
-			return '<input type="number" placeholder="1" />';
-		}
-	});
-	
-	acf.registerConditionType( ContainsAtLeast );
-*/
 	
 	/**
 	*  GreaterThan
@@ -9509,7 +9584,7 @@
 		fieldTypes: [ 'checkbox', 'select', 'post_object', 'page_link', 'relationship', 'taxonomy', 'user' ],
 	});
 	
-	acf.registerConditionType( SelectionGreaterThan );
+	acf.registerConditionType( SelectionLessThan );
 	
 })(jQuery);
 
@@ -9679,7 +9754,7 @@
 		
 		remove: function(){
 			this.frame.detach();
-			this.frame.dispose();
+			this.frame.remove();
 		},
 		
 		getFrameOptions: function(){
@@ -10050,8 +10125,14 @@
 		initialize: function(){
 			
 			// bail early if no media views
-			if( !acf.isset(wp, 'media', 'view') ) {
+			if( !acf.isset(window, 'wp', 'media', 'view') ) {
 				return;
+			}
+			
+			// fix bug where CPT without "editor" does not set post.id setting which then prevents uploadedTo from working
+			var postID = getPostID();
+			if( postID && acf.isset(wp, 'media', 'view', 'settings', 'post') ) {
+				wp.media.view.settings.post.id = postID;
 			}
 			
 			// customize
@@ -10147,38 +10228,43 @@
 			
 			// vars
 			var AttachmentCompat = wp.media.view.AttachmentCompat;
+			var timeout = false;
 			
 			// extend
 			wp.media.view.AttachmentCompat = AttachmentCompat.extend({
 				
-				isRendered: false,
-				
 				render: function() {
 					
-					// validate
-					if( this.isRendered ) return this;
-					this.isRendered = true;
+					// WP bug
+					// When multiple media frames exist on the same page (WP content, WYSIWYG, image, file ),
+					// WP creates multiple instances of this AttachmentCompat view.
+					// Each instance will attempt to render when a new modal is created.
+					// Use a property to avoid this and only render once per instance.
+					if( this.rendered ) {
+						return this;
+					}
 					
-					// render
+					// render HTML
 					AttachmentCompat.prototype.render.apply( this, arguments );
 					
-					// append
-					setTimeout( $.proxy(function(){
+					// when uploading, render is called twice.
+					// ignore first render by checking for #acf-form-data element
+					if( !this.$('#acf-form-data').length ) {
+						return this;
+					}
+					
+					// clear timeout
+					clearTimeout( timeout );
+					
+					// setTimeout
+					timeout = setTimeout($.proxy(function(){
+						this.rendered = true;
 						acf.doAction('append', this.$el);
-					}, this), 0 );
+					}, this), 50);
 					
 					// return
 					return this;
-				},
-				
-				dispose: function(){
-					
-					// remove
-					acf.doAction('remove', this.$el);
-					
-					// dispose
-					return AttachmentCompat.prototype.dispose.apply( this, arguments );
-				}				
+				}
 			});
 
 		},
@@ -10297,7 +10383,7 @@
 
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	acf.screen = new acf.Model({
 		
@@ -10325,13 +10411,7 @@
 			//'post_format':	0,
 			//'post_taxonomy':	0
 		},
-		
-		initialize: function(){
 			
-			// update post_id
-			this.set('post_id', acf.get('post_id'));
-		},
-				
 		fetch: function(){
 			
 			// bail early if not active
@@ -10350,7 +10430,9 @@
 			}
 			
 			// vars
-			var ajaxData = $.extend({}, this.data);
+			var ajaxData = acf.parseArgs(this.data, {
+				post_id: acf.get('post_id')
+			});
 			
 			// add action url
 			ajaxData.action = 'acf/post/get_field_groups';
@@ -10970,14 +11052,9 @@
 				});
 				
 				// on select, move to end
-				$select.on('select2:select', function( e ){
-					
-					// vars
-					var $option = $(e.params.data.element);
-					
-					// detach and re-append to end
-					$option.detach().appendTo( $select );
-				});
+				$select.on('select2:select', this.proxy(function( e ){
+					this.getOption( e.params.data.id ).detach().appendTo( this.$el );
+				}));
 			}
 			
 			// add class
@@ -11171,6 +11248,9 @@
 				}
 				$select.val( val ).trigger('change');
 			});
+			
+			// hide select
+			$select.hide();
 		},
 		
 		mergeOptions: function(){
@@ -11213,8 +11293,152 @@
 			return Select2.prototype.getAjaxData.apply(this, [params]);
 		},
 		
-	});	
-
+	});
+	
+	
+	// manager
+	var select2Manager = new acf.Model({
+		priority: 5,
+		wait: 'prepare',
+		initialize: function(){
+			
+			// vars
+			var locale = acf.get('locale');
+			var rtl = acf.get('rtl');
+			var l10n = acf.get('select2L10n');
+			var version = getVersion();
+			
+			// bail ealry if no l10n
+			if( !l10n ) {
+				return false;
+			}
+			
+			// bail early if 'en'
+			if( locale.indexOf('en') === 0 ) {
+				return false;
+			}
+			
+			// initialize
+			if( version == 4 ) {
+				this.addTranslations4();
+			} else if( version == 3 ) {
+				this.addTranslations3();
+			}
+		},
+		
+		addTranslations4: function(){
+			
+			// vars
+			var l10n = acf.get('select2L10n');
+			var locale = acf.get('locale');
+			
+			// modify local to match html[lang] attribute (used by Select2)
+			locale = locale.replace('_', '-');
+			
+			// select2L10n
+			var select2L10n = {
+				errorLoading: function () {
+					return l10n.load_fail;
+				},
+				inputTooLong: function (args) {
+					var overChars = args.input.length - args.maximum;
+					if( overChars > 1 ) {
+						return l10n.input_too_long_n.replace( '%d', overChars );
+					}
+					return l10n.input_too_long_1;
+				},
+				inputTooShort: function( args ){
+					var remainingChars = args.minimum - args.input.length;
+					if( remainingChars > 1 ) {
+						return l10n.input_too_short_n.replace( '%d', remainingChars );
+					}
+					return l10n.input_too_short_1;
+				},
+				loadingMore: function () {
+					return l10n.load_more;
+				},
+				maximumSelected: function( args ) {
+					var maximum = args.maximum;
+					if( maximum > 1 ) {
+						return l10n.selection_too_long_n.replace( '%d', maximum );
+					}
+					return l10n.selection_too_long_1;
+				},
+				noResults: function () {
+					return l10n.matches_0;
+				},
+				searching: function () {
+					return l10n.searching;
+				}
+			};
+				
+			// append
+			jQuery.fn.select2.amd.define('select2/i18n/' + locale, [], function(){
+				return select2L10n;
+			});
+		},
+		
+		addTranslations3: function(){
+			
+			// vars
+			var l10n = acf.get('select2L10n');
+			var locale = acf.get('locale');
+			
+			// modify local to match html[lang] attribute (used by Select2)
+			locale = locale.replace('_', '-');
+			
+			// select2L10n
+			var select2L10n = {
+				formatMatches: function( matches ) {
+					if( matches > 1 ) {
+						return l10n.matches_n.replace( '%d', matches );
+					}
+					return l10n.matches_1;
+				},
+				formatNoMatches: function() {
+					return l10n.matches_0;
+				},
+				formatAjaxError: function() {
+					return l10n.load_fail;
+				},
+				formatInputTooShort: function( input, min ) {
+					var remainingChars = min - input.length;
+					if( remainingChars > 1 ) {
+						return l10n.input_too_short_n.replace( '%d', remainingChars );
+					}
+					return l10n.input_too_short_1;
+				},
+				formatInputTooLong: function( input, max ) {
+					var overChars = input.length - max;
+					if( overChars > 1 ) {
+						return l10n.input_too_long_n.replace( '%d', overChars );
+					}
+					return l10n.input_too_long_1;
+				},
+				formatSelectionTooBig: function( maximum ) {
+					if( maximum > 1 ) {
+						return l10n.selection_too_long_n.replace( '%d', maximum );
+					}
+					return l10n.selection_too_long_1;
+				},
+				formatLoadMore: function() {
+					return l10n.load_more;
+				},
+				formatSearching: function() {
+					return l10n.searching;
+				}
+		    };
+		    
+		    // ensure locales exists
+			$.fn.select2.locales = $.fn.select2.locales || {};
+			
+			// append
+			$.fn.select2.locales[ locale ] = select2L10n;
+			$.extend($.fn.select2.defaults, select2L10n);
+		}
+		
+	});
+	
 })(jQuery);
 
 (function($, undefined){
@@ -11318,7 +11542,7 @@
 			}
 			
 			// settings
-			init = $.extend( {}, defaults.tinymce, args.tinymce );
+			var init = $.extend( {}, defaults.tinymce, args.tinymce );
 			init.id = id;
 			init.selector = '#' + id;
 			
@@ -11404,7 +11628,7 @@
 			if( !defaults ) return false;
 			
 			// settings
-			init = $.extend( {}, defaults.quicktags, args.quicktags );
+			var init = $.extend( {}, defaults.quicktags, args.quicktags );
 			init.id = id;
 			
 			// filter
@@ -11598,7 +11822,7 @@
 	
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	/**
 	*  acf.validation
@@ -11635,10 +11859,10 @@
 		},
 		
 		events: {
-			'click #publish':	'onClickPublish',
-			'click #submit':	'onClickPublish',
-			'click #save-post':	'onClickSave',
-			'submit form':		'onSubmit',
+			'click input[type="submit"]':	'onClickSubmit',
+			'click button[type="submit"]':	'onClickSubmit',
+			'click #save-post':				'onClickSave',
+			'submit form':					'onSubmit',
 		},
 		
 		initialize: function(){
@@ -11646,6 +11870,8 @@
 			// load global setting
 			if( !acf.get('validation') ) {
 				this.disable();
+				this.actions = {};
+				this.events = {};
 			}
 		},
 		
@@ -11860,6 +12086,8 @@
 			
 			// create event specific success callback
 			if( args.event ) {
+				
+				// create new event to avoid conflicts with prevenDefault (as used in taxonomy form)
 				var event = $.Event(null, args.event);
 				args.success = function(){
 					$(event.target).trigger( event );
@@ -11868,7 +12096,7 @@
 			
 			// action for 3rd party
 			acf.doAction('validation_begin', $form);
-				
+			
 			// data
 			var data = acf.serialize( $form );	
 			data.action = 'acf/validate_save_post';
@@ -11967,16 +12195,11 @@
 		addInputEvents: function( $el ){
 			
 			// vars
-			var $inputs = $('.acf-field [name]');
+			var $inputs = $('.acf-field [name]', $el);
 			
 			// check
 			if( $inputs.length ) {
-				
-				// vars
-				var callback = this.newEventCallback(this, 'onInvalid');
-				
-				// append
-				$inputs.on('invalid', callback);
+				this.on( $inputs, 'invalid', 'onInvalid' );
 			}
 		},
 		
@@ -12001,19 +12224,15 @@
 			$form.submit();
 		},
 		
-		// fixes bug on User Profile edit form
-		// - WP prevents $form.submit() events for unknown reason
-		// - temp store 'click event' and use later in onSubmit
-		onClickPublish: function( e, $el ){
+		onClickSubmit: function( e, $el ){
+			
+			// store the "click event" for later use in this.onSubmit()
 			this.set('originalEvent', e);
-			this.setTimeout(function(){
-				this.set('originalEvent', null);
-			}, 100);
 		},
 		
 		onClickSave: function( e, $el ) {
 			
-			// ignore errors
+			// ignore errors when saving
 			this.pass();
 		},
 		
@@ -12022,7 +12241,7 @@
 			// validate
 			var valid = acf.validateForm({
 				form: $form,
-				event: this.get('originalEvent') || e
+				event: this.get('originalEvent')
 			});
 			
 			// if not valid, stop event and allow validation to continue
@@ -12042,11 +12261,11 @@
 		},
 		
 		disableSubmit: function( $submit ){
-			$submit.addClass('disabled');
+			$submit.prop('disabled', true).addClass('disabled');
 		},
 		
 		enableSubmit: function( $submit ){
-			$submit.removeClass('disabled');
+			$submit.prop('disabled', false).removeClass('disabled');
 		},
 		
 		findSubmitWrap: function( $form ){
@@ -12083,7 +12302,7 @@
 			
 			// vars
 			var $wrap = this.findSubmitWrap( $form );
-			var $submit = $wrap.find('.button, .acf-button');
+			var $submit = $wrap.find('.button, [type="submit"]');
 			var $spinner = $wrap.find('.spinner, .acf-spinner');
 			
 			// hide all spinners (hides the preview spinner)
@@ -12098,7 +12317,7 @@
 			
 			// vars
 			var $wrap = this.findSubmitWrap( $form );
-			var $submit = $wrap.find('.button, .acf-button');
+			var $submit = $wrap.find('.button, [type="submit"]');
 			var $spinner = $wrap.find('.spinner, .acf-spinner');
 			
 			// unlock
@@ -12193,6 +12412,36 @@
 (function($, undefined){
 	
 	/**
+	*  refreshHelper
+	*
+	*  description
+	*
+	*  @date	1/7/18
+	*  @since	5.6.9
+	*
+	*  @param	type $var Description. Default.
+	*  @return	type Description.
+	*/
+	
+	var refreshHelper = new acf.Model({
+		priority: 90,
+		timeout: 0,
+		actions: {
+			'new_field':	'refresh',
+			'show_field':	'refresh',
+			'hide_field':	'refresh',
+			'remove_field':	'refresh'
+		},
+		refresh: function(){
+			clearTimeout( this.timeout );
+			this.timeout = setTimeout(function(){
+				acf.doAction('refresh');
+			}, 0);
+		}
+	});
+	
+	
+	/**
 	*  sortableHelper
 	*
 	*  Adds compatibility for sorting a <tr> element
@@ -12274,6 +12523,10 @@
 	*/
 	
 	var tableHelper = new acf.Model({
+		
+		id: 'tableHelper',
+		
+		priority: 20,
 		
 		actions: {
 			'refresh': 	'renderTables'
@@ -12386,9 +12639,11 @@
 	*/
 	
 	var fieldsHelper = new acf.Model({
+		
 		id: 'fieldsHelper',
 		
-		priority: 99,
+		priority: 30,
+		
 		actions: {
 			'refresh': 	'renderGroups'
 		},
@@ -12483,7 +12738,7 @@
 		
 })(jQuery);
 
-(function($){
+(function($, undefined){
 	
 	/**
 	*  acf.newCompatibility
@@ -12546,7 +12801,9 @@
 	
 	var _acf = acf.newCompatibility(acf, {
 		
-		// storage for field types
+		// storage
+		l10n:	{},
+		o:		{},
 		fields: {},
 		
 		// changed function names
@@ -12573,184 +12830,140 @@
 		serialize_form:			acf.serialize,
 		esc_html:				acf.strEscape,
 		str_sanitize:			acf.strSanitize,
-		
-		/*
-		*  get_selector
-		*
-		*  This function will return a valid selector for finding a field object
-		*
-		*  @type	function
-		*  @date	15/01/2015
-		*  @since	5.1.5
-		*
-		*  @param	s (string)
-		*  @return	(string)
-		*/
-		
-		get_selector: function( s ) {
-			
-			// vars
-			var selector = '.acf-field';
-			
-			// bail early if no search
-			if( !s ) {
-				return selector;
-			}
-			
-			// compatibility with object
-			if( $.isPlainObject(s) ) {
-				if( $.isEmptyObject(s) ) {
-					return selector;
-				} else {
-					for( k in s ) { s = s[k]; break; }
-				}
-			}
-
-			// append
-			selector += '-' + s;
-				
-			// replace underscores (split/join replaces all and is faster than regex!)
-			selector = acf.strReplace('_', '-', selector);
-			
-			// remove potential double up
-			selector = acf.strReplace('field-field-', 'field-', selector);
-			
-			// return
-			return selector;
-		},
-		
-		/*
-		*  get_fields
-		*
-		*  This function will return a jQuery selection of fields
-		*
-		*  @type	function
-		*  @date	8/09/2014
-		*  @since	5.0.0
-		*
-		*  @param	args (object)
-		*  @param	$el (jQuery) element to look within
-		*  @param	all (boolean) return all fields or allow filtering (for repeater)
-		*  @return	$fields (jQuery)
-		*/
-		
-		get_fields: function( s, $el, all ){
-			
-			// args
-			var args = {
-				is: s || '',
-				parent: $el || false,
-				suppressFilters: all || false,
-			};
-			
-			// change 'field_123' to '.acf-field-123'
-			if( args.is ) {
-				args.is = this.get_selector( args.is );
-			}
-			
-			// return
-			return acf.findFields(args);			
-		},
-		
-		/*
-		*  get_field
-		*
-		*  This function will return a jQuery selection based on a field key
-		*
-		*  @type	function
-		*  @date	8/09/2014
-		*  @since	5.0.0
-		*
-		*  @param	field_key (string)
-		*  @param	$el (jQuery) element to look within
-		*  @return	$field (jQuery)
-		*/
-		
-		get_field: function( s, $el ){
-			
-			// get fields
-			var $fields = this.get_fields.apply(this, arguments);
-			
-			// return
-			if( $fields.length ) {
-				return $fields.first();
-			} else {
-				return false;
-			}
-		},
-		
-		/*
-		*  get_closest_field
-		*
-		*  This function will return the closest parent field
-		*
-		*  @type	function
-		*  @date	8/09/2014
-		*  @since	5.0.0
-		*
-		*  @param	$el (jQuery) element to start from
-		*  @param	args (object)
-		*  @return	$field (jQuery)
-		*/
-		
-		get_closest_field : function( $el, s ){
-			return $el.closest( this.get_selector(s) );
-		},
-		
-		/*
-		*  get_data
-		*
-		*  This function will return attribute data for a given elemnt
-		*
-		*  @type	function
-		*  @date	8/09/2014
-		*  @since	5.0.0
-		*
-		*  @param	$el (jQuery)
-		*  @param	name (mixed)
-		*  @return	(mixed)
-		*/
-		
-		get_data: function( $el, defaults ){
-			return acf.parseArgs( $el.data(), defaults );			
-		},
-				
-		/*
-		*  maybe_get
-		*
-		*  This function will attempt to return a value and return null if not possible
-		*
-		*  @type	function
-		*  @date	8/09/2014
-		*  @since	5.0.0
-		*
-		*  @param	obj (object) the array to look within
-		*  @param	key (key) the array key to look for. Nested values may be found using '/'
-		*  @param	value (mixed) the value returned if not found
-		*  @return	(mixed)
-		*/
-		
-		maybe_get: function( obj, key, value ){
-			
-			// default
-			if( value === undefined ) {
-				value = null;
-			}
-			
-			// get keys
-			keys = String(key).split('.');
-			
-			// acf.isget
-			for( var i = 0; i < keys.length; i++ ) {
-				if( !obj.hasOwnProperty(keys[i]) ) {
-					return value;
-				}
-				obj = obj[ keys[i] ];
-			}
-			return obj;
-		},
-		
+	
 	});
+	
+	_acf._e = function( k1, k2 ){
+		
+		// defaults
+		k1 = k1 || '';
+		k2 = k2 || '';
+		
+		// compability
+		var compatKey = k2 ? k1 + '.' + k2 : k1;
+		var compats = {
+			'image.select': 'Select Image',
+			'image.edit': 	'Edit Image',
+			'image.update': 'Update Image'
+		};
+		if( compats[compatKey] ) {
+			return acf.__(compats[compatKey]);
+		}
+		
+		// try k1
+		var string = this.l10n[ k1 ] || '';
+		
+		// try k2
+		if( k2 ) {
+			string = string[ k2 ] || '';
+		}
+		
+		// return
+		return string;
+	};
+	
+	_acf.get_selector = function( s ) {
+			
+		// vars
+		var selector = '.acf-field';
+		
+		// bail early if no search
+		if( !s ) {
+			return selector;
+		}
+		
+		// compatibility with object
+		if( $.isPlainObject(s) ) {
+			if( $.isEmptyObject(s) ) {
+				return selector;
+			} else {
+				for( var k in s ) { s = s[k]; break; }
+			}
+		}
+
+		// append
+		selector += '-' + s;
+			
+		// replace underscores (split/join replaces all and is faster than regex!)
+		selector = acf.strReplace('_', '-', selector);
+		
+		// remove potential double up
+		selector = acf.strReplace('field-field-', 'field-', selector);
+		
+		// return
+		return selector;
+	};
+	
+	_acf.get_fields = function( s, $el, all ){
+		
+		// args
+		var args = {
+			is: s || '',
+			parent: $el || false,
+			suppressFilters: all || false,
+		};
+		
+		// change 'field_123' to '.acf-field-123'
+		if( args.is ) {
+			args.is = this.get_selector( args.is );
+		}
+		
+		// return
+		return acf.findFields(args);			
+	};
+	
+	_acf.get_field = function( s, $el ){
+		
+		// get fields
+		var $fields = this.get_fields.apply(this, arguments);
+		
+		// return
+		if( $fields.length ) {
+			return $fields.first();
+		} else {
+			return false;
+		}
+	};
+		
+	_acf.get_closest_field = function( $el, s ){
+		return $el.closest( this.get_selector(s) );
+	};
+	
+	_acf.get_field_wrap = function( $el ){
+		return $el.closest( this.get_selector() );
+	};
+	
+	_acf.get_field_key = function( $field ){
+		return $field.data('key');
+	};
+	
+	_acf.get_field_type = function( $field ){
+		return $field.data('type');
+	};
+		
+	_acf.get_data = function( $el, defaults ){
+		return acf.parseArgs( $el.data(), defaults );			
+	};
+				
+	_acf.maybe_get = function( obj, key, value ){
+			
+		// default
+		if( value === undefined ) {
+			value = null;
+		}
+		
+		// get keys
+		keys = String(key).split('.');
+		
+		// acf.isget
+		for( var i = 0; i < keys.length; i++ ) {
+			if( !obj.hasOwnProperty(keys[i]) ) {
+				return value;
+			}
+			obj = obj[ keys[i] ];
+		}
+		return obj;
+	};
 	
 	
 	/**
@@ -12776,18 +12989,42 @@
 	
 	var compatibleCallback = function( origCallback ){
 		return function(){
-			origCallback.apply(this, compatibleArguments(arguments));
+			
+			// convert to compatible arguments
+			if( arguments.length ) {
+				var args = compatibleArguments(arguments);
+			
+			// add default argument for 'ready', 'append' and 'load' events
+			} else {
+				var args = [ $(document) ];
+			}
+			
+			// return
+			return origCallback.apply(this, args);
 		}
 	}
 	
 	_acf.add_action = function( action, callback, priority, context ){
+		
+		// handle multiple actions
+		var actions = action.split(' ');
+		var length = actions.length;
+		if( length > 1 ) {
+			for( var i = 0; i < length; i++) {
+				action = actions[i];
+				_acf.add_action.apply(this, arguments);
+			}
+			return this;
+		}
+		
+		// single
 		var callback = compatibleCallback(callback);
-		acf.addAction.apply(this, arguments);
+		return acf.addAction.apply(this, arguments);
 	};
 	
 	_acf.add_filter = function( action, callback, priority, context ){
 		var callback = compatibleCallback(callback);
-		acf.addFilter.apply(this, arguments);
+		return acf.addFilter.apply(this, arguments);
 	};
 
 	/*
@@ -12873,6 +13110,11 @@
 				
 				// append $el to event object
 				e.$el = $(this);
+				
+				// append $field to event object (used in field group)
+				if( acf.field_group ) {
+					e.$field = e.$el.closest('.acf-field-object');
+				}
 				
 				// event
 				if( typeof model.event === 'function' ) {
@@ -13145,77 +13387,109 @@
 			if( props.mime_types ) {
 				props.allowedTypes = props.mime_types;
 			}
+			if( props.id ) {
+				props.attachment = props.id;
+			}
 			
 			// new
 			var popup = acf.newMediaPopup( props );
 			
 			// append
+/*
 			if( props.selected ) {
 				popup.selected = props.selected;
 			}
+*/
 			
 			// return
 			return popup.frame;
 		}
 	});
 	
-})(jQuery);
-
-(function($, undefined){
 	
-	var tests = new acf.Model({
-		wait: 'prepare',
-		actions: {
-			//'change_field': 'onChangeField'
-		},
-		
-		initialize: function(){
+	/**
+	*  Select2
+	*
+	*  description
+	*
+	*  @date	11/6/18
+	*  @since	5.6.9
+	*
+	*  @param	type $var Description. Default.
+	*  @return	type Description.
+	*/
+	
+	_acf.select2 = {
+		init: function( $select, args, $field ){
 			
-			//this.getFieldsControls();
+			// compatible args
+			if( args.allow_null ) {
+				args.allowNull = args.allow_null;
+			}
+			if( args.ajax_action ) {
+				args.ajaxAction = args.ajax_action;
+			}
+			if( $field ) {
+				args.field = acf.getField($field);
+			}
+			
+			// return
+			return acf.newSelect2( $select, args );	
 		},
 		
-		getFields: function(){
-			this.time();
-			var fields = acf.getFields();
-			this.timeEnd();
+		destroy: function( $select ){
+			return acf.getInstance( $select ).destroy();
+			
 		},
-		
-		getAllFields: function(){
-			this.time();
-			var fields = acf.getAllFields();
-			this.timeEnd();
-		},
-		
-		getFieldsInputs: function(){
-			this.time();
-			var fields = acf.getAllFields();
-			fields.map(function(field){
-				var $input = field.$input();
-				if( !$input.length ) {
-					console.log(field.get('type'), $input);
-				}
-			});
-			this.timeEnd();
-		},
-		
-		getFieldsControls: function(){
-			this.time();
-			var fields = acf.getAllFields();
-			fields.map(function(field){
-				var $control = field.$control();
-				if( !$control.length ) {
-					console.log(field.get('type'), $control);
-				}
-			});
-			this.timeEnd();
-		},
-		
-		onChangeField: function( field, e ){
-			console.log( field.get('type'), field.val() );
+	};
+	
+	/**
+	*  postbox
+	*
+	*  description
+	*
+	*  @date	11/6/18
+	*  @since	5.6.9
+	*
+	*  @param	type $var Description. Default.
+	*  @return	type Description.
+	*/
+	
+	_acf.postbox = {
+		render: function( args ){
+			
+			// compatible args
+			if( args.edit_url ) {
+				args.editLink = args.edit_url;
+			}
+			if( args.edit_title ) {
+				args.editTitle = args.edit_title;
+			}
+			
+			// return
+			return acf.newPostbox( args );
 		}
-		
+	};
+	
+	/**
+	*  acf.screen
+	*
+	*  description
+	*
+	*  @date	11/6/18
+	*  @since	5.6.9
+	*
+	*  @param	type $var Description. Default.
+	*  @return	type Description.
+	*/
+	
+	acf.newCompatibility(acf.screen, {
+		update: function(){
+			return this.set.apply(this, arguments);
+		}
 	});
-		
+	_acf.ajax = acf.screen;
+	
 })(jQuery);
 
 // @codekit-prepend "../js/acf.js";
@@ -13263,6 +13537,5 @@
 // @codekit-prepend "../js/acf-validation.js";
 // @codekit-prepend "../js/acf-helpers.js";
 // @codekit-prepend "../js/acf-compatibility";
-// @codekit-prepend "../js/acf-tests";
 
 

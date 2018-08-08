@@ -120,7 +120,6 @@ class acf_admin_field_group {
 		
 		// filters
 		add_filter('acf/input/admin_l10n',					array($this, 'admin_l10n'));
-		
 	}
 	
 	
@@ -155,14 +154,21 @@ class acf_admin_field_group {
 			'This field cannot be moved until its changes have been saved'		=> __('This field cannot be moved until its changes have been saved', 'acf'),
 			'Field group title is required'										=> __('Field group title is required', 'acf'),
 			'Move to trash. Are you sure?'										=> __('Move to trash. Are you sure?', 'acf'),
+			'No toggle fields available'										=> __('No toggle fields available', 'acf'),
 			'Move Custom Field'													=> __('Move Custom Field', 'acf'),
-			'checked'															=> __('checked', 'acf'),
+			'Checked'															=> __('Checked', 'acf'),
 			'(no label)'														=> __('(no label)', 'acf'),
+			'(this field)'														=> __('(this field)', 'acf'),
 			'copy'																=> __('copy', 'acf'),
 			'or'																=> __('or', 'acf'),
 			'Null'																=> __('Null', 'acf'),
 		));
 		
+		// localize data
+		acf_localize_data(array(
+		   	'fieldTypes' => acf_get_field_types_info()
+	   	));
+	   	
 		// 3rd party hook
 		do_action('acf/field_group/admin_enqueue_scripts');
 		
@@ -235,7 +241,8 @@ class acf_admin_field_group {
 		acf_form_data(array(
 			'screen'		=> 'field_group',
 			'post_id'		=> $post->ID,
-			'delete_fields'	=> 0
+			'delete_fields'	=> 0,
+			'validation'	=> 0
 		));
 
 	}
@@ -437,12 +444,10 @@ class acf_admin_field_group {
 		acf_disable_filters();
 		
         // save fields
-        $fields = acf_maybe_get_POST('acf_fields');
-        
-		if( $fields ) {
+        if( !empty($_POST['acf_fields']) ) {
 			
 			// loop
-			foreach( $fields as $field ) {
+			foreach( $_POST['acf_fields'] as $field ) {
 				
 				// vars
 				$specific = false;
@@ -456,14 +461,6 @@ class acf_admin_field_group {
 						'post_parent',
 					);
 				}
-				
-/*
-				// json
-				if( is_string($field) ) {
-					$field = wp_unslash($field);
-					$field = json_decode($field, true);
-				}
-*/
 				
 				// set parent
 				if( !$field['parent'] ) {
@@ -684,7 +681,7 @@ class acf_admin_field_group {
 		if( !$field ) die();
 		
 		// set prefix
-		$field['prefix'] = 'acf_fields[' . $field['key'] . ']';
+		$field['prefix'] = acf_maybe_get_POST('prefix');
 		
 		// validate
 		$field = acf_get_valid_field( $field );

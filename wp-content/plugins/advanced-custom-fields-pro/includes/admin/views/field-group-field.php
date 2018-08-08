@@ -39,7 +39,7 @@ $meta = array(
 			</li>
 			<li class="li-field-label">
 				<strong>
-					<a class="edit-field" title="<?php _e("Edit field",'acf'); ?>" href="#"><?php echo acf_get_field_label($field); ?></a>
+					<a class="edit-field" title="<?php _e("Edit field",'acf'); ?>" href="#"><?php echo acf_get_field_label($field, 'admin'); ?></a>
 				</strong>
 				<div class="row-options">
 					<a class="edit-field" title="<?php _e("Edit field",'acf'); ?>" href="#"><?php _e("Edit",'acf'); ?></a>
@@ -86,7 +86,7 @@ $meta = array(
 					'instructions'	=> '',
 					'type'			=> 'select',
 					'name'			=> 'type',
-					'choices' 		=> acf_get_field_types(),
+					'choices' 		=> acf_get_grouped_field_types(),
 					'class'			=> 'field-type'
 				), true);
 				
