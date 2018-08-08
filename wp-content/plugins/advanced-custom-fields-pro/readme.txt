@@ -1,7 +1,7 @@
 === Advanced Custom Fields Pro ===
 Contributors: elliotcondon
 Tags: acf, advanced, custom, field, fields, form, repeater, content
-Requires at least: 3.6.0
+Requires at least: 4.4.0
 Tested up to: 4.9.9
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -66,30 +66,36 @@ From your WordPress dashboard
 
 == Changelog ==
 
-= 5.7.0-beta4 =
-* Changed field error message style
-* Added "Uploaded to this post" text within media popup filter dropdown choices
-* Added smart compatibility for acf.add_action() parameters
-* Added more field types to existing conditions
-* Added new "unload" JS action including "unload_field"
-* Fixed bug in relationship field where selected items were not marked as disabled during search
-* Added smart "allow null toggle" to taxonomy field displaying as radio inputs
-* Moved JS hooks to `acf.hooks` to avoid conflicts with Gutenberg plugin
-* Fixed bug where changing the post template did not trigger AJAX to find new field groups
-* Improved select field by filtering choices when using the AJAX setting
-* Improved flexible content field validation
-* Improved repeater field validation
+= 5.7.2 =
+*Release Date - 6 August 2018*
+
+* Fix - Fixed bug preventing the Google Maps Field address from being customised.
+* Fix - Improved logic to request and cache plugin update information.
+* Fix - Fixed bug preventing JS initialization when editing widgets in accessibility mode.
+* Fix - Added missing $parent argument to term_exists() function when adding a new term via taxonomy field popup.
+* Fix - Fixed bug where nested Group Fields did not delete their values.
+* Fix - Fixed JS error thrown by localStorage if cookies are not enabled.
+* Dev - Bumped minimum WP version requirement to 4.4.
+* Dev - Added action 'wp_nav_menu_item_custom_fields' for compatibility with other plugins modifying the menu walker class.
+* Dev - Added 'multiple' to the allowed attributes for an email field.
+* Dev - Added new ACF_Ajax class for upcoming features.
+
+= 5.7.1 =
+* Core: Minor fixes and improvements
 
 = 5.7.0 =
 * Core: Major JavaScript updates
-* Core: Major conditional logic update
+* Core: Improved conditional logic with new types and more supported fields
 * Core: Improved localization and internationalization
-* Core: Improved logic that remembers collapsed row/layout states
+* Repeater field: Improved logic that remembers collapsed row states
 * Repeater field: Added support to collapse multiple rows (hold shift)
+* API: Improved lookup to find fields without a reference value
 * Language: Added Croatian translation - Thanks to Vlado Bosnjak
 * Language: Updated Italian translation - thanks to Davide Pantè
 * Language: Updated Romanian translation - thanks to Ionut Staicu
 * Language: Updated German translation - thanks to Ralf Koller
+* Language: Updated Arabic translation - thanks to Karim Ramadan
+* Language: Updated Portuguese translation - thanks to Pedro Mendonça
 
 = 5.6.10 =
 * Core: Minor fixes and improvements

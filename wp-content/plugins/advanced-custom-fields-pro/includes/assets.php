@@ -125,7 +125,7 @@ class ACF_Assets {
 		$args = wp_parse_args($args, array(
 			
 			// force tinymce editor to be enqueued
-			'enqueue_uploader'	=> false,
+			'uploader'			=> false,
 			
 			// priority used for action callbacks, defaults to 20 which runs after defaults
 			'priority'			=> 20,
@@ -157,7 +157,7 @@ class ACF_Assets {
 		// enqueue uploader
 		// WP requires a lot of JS + inline scripes to create the media modal and should be avoioded when possible.
 		// - priority must be less than 10 to allow WP to enqueue
-		if( $args['enqueue_uploader'] ) {
+		if( $args['uploader'] ) {
 			add_action($actions['admin_footer'], 'acf_enqueue_uploader', 5);
 		}
 		
@@ -312,7 +312,7 @@ class ACF_Assets {
 			'wp_version'	=> $wp_version,
 			'acf_version'	=> acf_get_setting('version'),
 			'browser'		=> acf_get_browser(),
-			'locale'		=> get_locale(),
+			'locale'		=> acf_get_locale(),
 			'rtl'			=> is_rtl()
 		));
 		

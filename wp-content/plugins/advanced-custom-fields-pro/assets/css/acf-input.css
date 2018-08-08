@@ -782,7 +782,7 @@ html[dir="rtl"] ul.acf-checkbox-list input[type="radio"] {
   background: #48a8f4;
 }
 .acf-button-group input {
-  display: none;
+  display: none !important;
 }
 .acf-button-group label {
   margin: 0 0 0 -1px;
@@ -1295,6 +1295,9 @@ html[dir="rtl"] .acf-relationship .selection .values .acf-icon {
 .acf-tab-group li a:focus {
   outline: none;
   box-shadow: none;
+}
+.acf-tab-group li a:empty {
+  display: none;
 }
 html[dir="rtl"] .acf-tab-group li {
   margin: 0 0 0 0.5em;
@@ -2604,9 +2607,6 @@ p.submit .acf-spinner {
 .acf-widget-fields > .acf-field .acf-label label {
   font-weight: normal;
   margin: 0;
-}
-.widget form > .acf-error-message {
-  margin-top: 15px;
 }
 /*--------------------------------------------------------------------------------------------
 *

@@ -256,7 +256,6 @@ class acf_form_widget {
 	*/
 	
 	function admin_footer() {
-		
 ?>
 <script type="text/javascript">
 (function($) {
@@ -264,17 +263,17 @@ class acf_form_widget {
 	// vars
 	acf.set('post_id', 'widgets');
 	
-	// restrict get fields
-	acf.addFilter('get_fields', function( $fields ){
-	
-		// widgets
-		$fields = $fields.not('#available-widgets .acf-field');
+	// Only initialize visible fields.
+	// - check for #widgets-right as this does not exist in accessibility mode
+	acf.addFilter('find_fields_args', function( args ){
 		
-		// customizer
-		$fields = $fields.not('.widget-tpl .acf-field');
+		// add parent
+		if( !args.parent && $('#widgets-right').length ) {
+			args.parent = $('#widgets-right');
+		}
 		
 		// return
-		return $fields;
+		return args;
 	});
 	
 	// on publish
@@ -298,9 +297,14 @@ class acf_form_widget {
 		}
 	});
 	
-	
-	$(document).on('click', '.widget-top', function(){
-		acf.doAction('show', $(this).parent());
+	// show
+	$('#widgets-right').on('click', '.widget-top', function(){
+		var $widget = $(this).parent();
+		if( $widget.hasClass('open') ) {
+			acf.doAction('hide', $widget);
+		} else {
+			acf.doAction('show', $widget);
+		}
 	});
 	
 	$(document).on('widget-added', function( e, $widget ){
@@ -309,7 +313,6 @@ class acf_form_widget {
 		setTimeout(function(){
 			acf.doAction('append', $widget );
 		}, 100);
-		
 	});
 	
 })(jQuery);	

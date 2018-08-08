@@ -56,7 +56,7 @@ class ACF_Form_User {
 	function admin_enqueue_scripts() {
 		
 		// bail early if not valid screen
-		if( !acf_is_screen(array('profile', 'user_edit', 'user-new')) ) {
+		if( !acf_is_screen(array('profile', 'user', 'user-edit')) ) {
 			return;
 		}
 		
@@ -157,7 +157,7 @@ class ACF_Form_User {
 		// render
 		$this->render(array(
 			'user_id'	=> 0,
-			'view'		=> 'new',
+			'view'		=> 'add',
 			'el'		=> 'tr'
 		));
 	}

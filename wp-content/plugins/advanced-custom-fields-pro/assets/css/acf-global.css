@@ -640,49 +640,6 @@ a.acf-icon.-cancel.grey:hover {
 .acf-box .footer p {
   margin: 0;
 }
-/* error */
-.acf-error-message {
-  position: relative;
-  display: block;
-  background: #F55E4F;
-  margin: 5px 0 15px;
-  padding: 1px 12px;
-  min-height: 0px;
-  border-left: #dd4232 solid 4px;
-}
-.acf-error-message p {
-  font-size: 13px !important;
-  line-height: 1.5;
-  margin: 0.5em 0;
-  padding: 2px;
-  text-shadow: none;
-  color: #fff;
-}
-.acf-error-message .acf-icon {
-  position: absolute;
-  top: 9px;
-  right: 12px;
-  background-color: #dd4232;
-  border-color: transparent;
-  color: #fff;
-}
-/* important to include .-cancel to override .acf-icon.-cancel class */
-.acf-error-message .acf-icon.-cancel:hover {
-  background-color: #191e23;
-  color: #F55E4F;
-}
-/* success */
-.acf-error-message.-success {
-  background-color: #46b450;
-  border-color: #32973b;
-}
-.acf-error-message.-success .acf-icon {
-  background-color: #32973b;
-}
-.acf-error-message.-success .acf-icon.-cancel:hover {
-  background-color: #191e23;
-  color: #46b450;
-}
 /*--------------------------------------------------------------------------------------------
 *
 *	acf-notice
@@ -1028,6 +985,7 @@ html[dir="rtl"] .acf-columns-2 .acf-column-2 {
   left: 0;
   right: 0;
   bottom: 0;
+  text-align: center;
 }
 #acf-popup .bg {
   position: absolute;
@@ -1038,15 +996,24 @@ html[dir="rtl"] .acf-columns-2 .acf-column-2 {
   z-index: 0;
   background: rgba(0, 0, 0, 0.25);
 }
+#acf-popup:before {
+  content: '';
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+}
 #acf-popup .acf-popup-box {
+  display: inline-block;
+  vertical-align: middle;
   z-index: 1;
   min-width: 300px;
   min-height: 160px;
   border-color: #aaaaaa;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  box-shadow: 0 5px 30px -5px rgba(0, 0, 0, 0.25);
+  text-align: left;
+}
+html[dir="rtl"] #acf-popup .acf-popup-box {
+  text-align: right;
 }
 #acf-popup .acf-popup-box .title {
   min-height: 15px;

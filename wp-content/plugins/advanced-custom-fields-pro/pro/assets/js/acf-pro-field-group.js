@@ -81,15 +81,29 @@
 			'click .delete-layout':		'onClickDelete'
 		},
 		
-		findInput: function( name ){
+		$input: function( name ){
 			return $('#' + this.getInputId() + '-' + name);
+		},
+		
+		$list: function(){
+			return this.$('.acf-field-list:first');
 		},
 		
 		getInputId: function(){
 			return this.fieldObject.getInputId() + '-layouts-' + this.field.get('id');
 		},
 		
-		render: function(){
+		// get all sub fields
+		getFields: function(){
+			return acf.getFieldObjects({ parent: this.$el });
+		},
+		
+		// get imediate children
+		getChildren: function(){
+			return acf.getFieldObjects({ list: this.$list() });
+		},
+		
+		initialize: function(){
 			
 			// add sortable
 			var $tbody = this.$el.parent();
@@ -97,7 +111,7 @@
 				
 				$tbody.sortable({
 					items: '> .acf-field-setting-fc_layout',
-					handle: '[data-name="acf-fc-reorder"]',
+					handle: '.reorder-layout',
 					forceHelperSize: true,
 					forcePlaceholderSize: true,
 					scroll: true,
@@ -112,42 +126,18 @@
 		},
 		
 		updateFieldLayouts: function(){
-			
-			// vars
-			var $list = this.$('.acf-field-list:first');
-			var fields = acf.getFieldObjects({
-				list: $list
-			});
-			
-			// loop
-			fields.map(this.updateFieldLayout, this);
-			
+			this.getChildren().map(this.updateFieldLayout, this);
 		},
 		
 		updateFieldLayout: function( field ){
 			field.prop('parent_layout', this.get('id'));
 		},
 		
-		reset: function(){
-			
-			// vars
-			var $list = this.$('.acf-field-list:first');
-			
-			// remove sub fields
-			$list.children('.acf-field-object').remove();
-			
-			// show empty
-			$list.addClass('-empty');
-			
-			// reset layout meta values
-			this.$('.acf-fc-meta input').val('');
-		},
-		
 		onChangeLabel: function( e, $el ){
 			
 			// vars
 			var label = $el.val();
-			var $name = this.findInput('name');
+			var $name = this.$input('name');
 			
 			// render name
 			if( $name.val() == '' ) {
@@ -155,35 +145,17 @@
 			}
 		},
 		
-		getList: function(){
-			return this.$('.acf-field-list:first');
-		},
-		
-		getChildren: function(){
-			return acf.getFieldObjects({ list: this.getList() });
-		},
-		
-		wipe: function(){
+		onClickAdd: function( e, $el ){
 			
 			// vars
-			var layoutKey = this.get('id');
-			
-			// update hidden input
-			this.$('.layout-key').val( layoutKey );
-			
-			// refresh children
-			this.getChildren().map(function( child ){
-				child.wipe();
-				child.prop('parent_layout', layoutKey);
-				child.save();
-			});
-		},
-
-		onClickAdd: function( e, $el ){
+			var prevKey = this.get('id');
+			var newKey = acf.uniqid('layout_');
 			
 			// duplicate
 			$layout = acf.duplicate({
 				$el: this.$el,
+				search: prevKey,
+				replace: newKey,
 				after: function( $el, $el2 ){
 					
 					// vars
@@ -203,8 +175,8 @@
 			// get layout
 			var layout = acf.getFieldSetting( $layout );
 			
-			// wipe layout
-			layout.wipe();
+			// update hidden input
+			layout.$input('key').val( newKey );
 			
 			// save
 			this.fieldObject.save();
@@ -212,19 +184,45 @@
 			
 		onClickDuplicate: function( e, $el ){
 			
+			// vars
+			var prevKey = this.get('id');
+			var newKey = acf.uniqid('layout_');
+			
 			// duplicate
 			$layout = acf.duplicate({
-				$el: this.$el
+				$el: this.$el,
+				search: prevKey,
+				replace: newKey
 			});
+			
+			// get all fields in new layout similar to fieldManager.onDuplicateField().
+			// important to run field.wipe() before making any changes to the "parent_layout" prop
+			// to ensure the correct input is modified.
+			var children = acf.getFieldObjects({ parent: $layout });
+			if( children.length ) {
+				
+				// loop
+				children.map(function( child ){
+					
+					// wipe field
+					child.wipe();
+					
+					// update parent
+					child.updateParent();
+				});
+			
+				// action
+				acf.doAction('duplicate_field_objects', children, this.fieldObject, this.fieldObject);
+			}
 			
 			// get layout
 			var layout = acf.getFieldSetting( $layout );
 			
-			// wipe layout
-			layout.wipe();
-			
+			// update hidden input
+			layout.$input('key').val( newKey );
+						
 			// save
-			this.fieldObject.save();		
+			this.fieldObject.save();
 		},
 		
 		onClickDelete: function( e, $el ){
@@ -253,12 +251,12 @@
 			
 			// validate
 			if( !$siblings.length ) {
-				alert( acf._e('flexible_content', 'layout_warning') );
+				alert( acf.__('Flexible Content requires at least 1 layout') );
 				return false;
 			}
 			
 			// delete sub fields
-			this.getChildren().map(function( child ){
+			this.getFields().map(function( child ){
 				child.delete({
 					animate: false
 				});

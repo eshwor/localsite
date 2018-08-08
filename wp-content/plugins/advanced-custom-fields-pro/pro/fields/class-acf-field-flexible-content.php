@@ -80,6 +80,9 @@ class acf_field_flexible_content extends acf_field {
 			// popup badge
 			'{available} {label} {identifier} available (max {max})'	=> __('{available} {label} {identifier} available (max {max})', 'acf'),
 			'{required} {label} {identifier} required (min {min})'		=> __('{required} {label} {identifier} required (min {min})', 'acf'),
+			
+			// field settings
+			'Flexible Content requires at least 1 layout'				=> __('Flexible Content requires at least 1 layout', 'acf')
 	   	));
 	}
 	

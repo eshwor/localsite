@@ -11,6 +11,8 @@
 			'click a[data-event="collapse-row"]': 	'onClickCollapse',
 			'showField':							'onShow',
 			'unloadField':							'onUnload',
+			'mouseover': 							'onHover',
+			'unloadField':							'onUnload'
 		},
 		
 		$control: function(){
@@ -26,7 +28,7 @@
 		},
 		
 		$rows: function(){
-			return this.$('tbody:first > tr');
+			return this.$('tbody:first > tr').not('.acf-clone');
 		},
 		
 		$row: function( index ){
@@ -46,7 +48,7 @@
 		},
 		
 		getValue: function(){
-			return this.$rows().length - 1;
+			return this.$rows().length;
 		},
 		
 		allowRemove: function(){
@@ -85,7 +87,7 @@
 		addCollapsed: function(){
 			
 			// vars
-			var indexes = collapsed.get( this.get('key') );
+			var indexes = preference.load( this.get('key') );
 			
 			// bail early if no collapsed
 			if( !indexes ) {
@@ -99,18 +101,29 @@
 				}
 			});
 		},
+		
+		addUnscopedEvents: function( self ){
+			
+			// invalidField
+			this.on('invalidField', '.acf-row', function(e){
+				var $row = $(this);
+				if( self.isCollapsed($row) ) {
+					self.expand( $row );
+				}
+			});
+		},
 				
 		initialize: function(){
 			
-			// add sortable
-			this.addSortable( this );
+			// add unscoped events
+			this.addUnscopedEvents( this );
 			
 			// add collapsed
 			this.addCollapsed();
 			
 			// disable clone
 			acf.disable( this.$clone(), this.cid );
-						
+			
 			// render
 			this.render();
 		},
@@ -187,32 +200,33 @@
 				return false;
 			}
 			
-			// vars
-			var $clone = this.$clone();
-			
 			// defaults
 			args = acf.parseArgs(args, {
-				before: $clone
+				before: false
 			});
 			
 			// add row
 			var $el = acf.duplicate({
-				target: $clone,
-				append: function( $el, $el2 ){
+				target: this.$clone(),
+				append: this.proxy(function( $el, $el2 ){
+					
+					// append
+					if( args.before ) {
+						args.before.before( $el2 );
+					} else {
+						$el.before( $el2 );
+					}
 					
 					// remove clone class
 					$el2.removeClass('acf-clone');
 					
-					// append
-					args.before.before( $el2 );
-				}
+					// enable
+					acf.enable( $el2, this.cid );
+					
+					// render
+					this.render();
+				})
 			});
-			
-			// enable 
-			acf.enable_form( $el, this.cid );
-			
-			// update order
-			this.render();
 			
 			// trigger change for validation errors
 			this.$input().trigger('change');
@@ -220,32 +234,6 @@
 			// return
 			return $el;
 		},
-		
-/*
-		sync: function(){
-			
-			// vars
-			var name = 'collapsed_' + this.$field.data('key'),
-				collapsed = [];
-			
-			
-			// populate collapsed value
-			this.$tbody.children().each(function( i ){
-				
-				if( $(this).hasClass('-collapsed') ) {
-				
-					collapsed.push( i );
-					
-				}
-				
-			});
-			
-			
-			// update
-			acf.update_user_setting( name, collapsed.join(',') );	
-			
-		},
-*/
 		
 		validateRemove: function(){
 			
@@ -312,46 +300,47 @@
 					
 					// sync collapsed order
 					//self.sync();
-					
-					// refresh field (hide/show columns)
-					acf.do_action('refresh', self.$el);
 				}
 			});
+		},
+		
+		isCollapsed: function( $row ){
+			return $row.hasClass('-collapsed');
+		},
+		
+		collapse: function( $row ){
+			$row.addClass('-collapsed');
+			acf.doAction('hide', $row, 'collapse');
+		},
+		
+		expand: function( $row ){
+			$row.removeClass('-collapsed');
+			acf.doAction('show', $row, 'collapse');
 		},
 		
 		onClickCollapse: function( e, $el ){
 			
 			// vars
 			var $row = $el.closest('.acf-row');
-			var isCollpased = $row.hasClass('-collapsed')
+			var isCollpased = this.isCollapsed( $row );
 			
 			// shift
 			if( e.shiftKey ) {
 				$row = this.$rows();
 			}
 			
-			// is collapsed
+			// toggle
 			if( isCollpased ) {
-				$row.removeClass('-collapsed');
-				acf.do_action('show', $row, 'collapse');
-			
-			// collapse
+				this.expand( $row );
 			} else {
-				$row.addClass('-collapsed');
-				acf.do_action('hide', $row, 'collapse');
-			}
-			
-			// sync
-			//this.set('$field', $field).sync();
-			
-			// refersh field (hide/show columns)
-			acf.do_action('refresh', this.$el);		
+				this.collapse( $row );
+			}	
 		},
 		
-		onShow: function( e, context ){
+		onShow: function( e, $el, context ){
 			
 			// get sub fields
-			var fields = acf.findFields({
+			var fields = acf.getFields({
 				is: ':visible',
 				parent: this.$el,
 			});
@@ -359,9 +348,7 @@
 			// trigger action
 			// - ignore context, no need to pass through 'conditional_logic'
 			// - this is just for fields like google_map to render itself
-			fields.each(function(){
-				acf.do_action('show_field', $(this));
-			});
+			acf.doAction('show_fields', fields);
 		},
 		
 		onUnload: function(){
@@ -376,8 +363,20 @@
 				}
 			});
 			
+			// allow null
+			indexes = indexes.length ? indexes : null;
+			
 			// set
-			collapsed.set( this.get('key'), indexes );
+			preference.save( this.get('key'), indexes );
+		},
+		
+		onHover: function(){
+			
+			// add sortable
+			this.addSortable( this );
+			
+			// remove event
+			this.off('mouseover');
 		}
 	});
 	
@@ -391,27 +390,19 @@
 	acf.registerConditionForFieldType('greaterThan', 'repeater');
 	
 	
-	// collapsed manager
-	var collapsed = new acf.Model({
+	// state
+	var preference = new acf.Model({
 		
-		data: {},
+		name: 'this.collapsedRows',
 		
-		reference: {},
-		
-		actions: {
-			'unload 1': 'reset',
-		},
-		
-		reset: function(){
-			this.data = {};
-			this.reference = {};
-		},
-		
-		getKey: function( key ){
+		key: function( key, context ){
 			
-			// increase reference (1, 2, 3 etc)
-			var count = this.reference[ key ] || 0;
-			this.reference[ key ] = ++count;
+			// vars
+			var count = this.get(key+context) || 0;
+			
+			// update
+			count++;
+			this.set(key+context, count, true);
 			
 			// modify fieldKey
 			if( count > 1 ) {
@@ -422,37 +413,33 @@
 			return key;
 		},
 		
-		get: function( fieldKey ){
+		load: function( key ){
 			
 			// vars 
-			var key = this.getKey( fieldKey );
-			var data = acf.getPreference('this.collapsedRows');
+			var key = this.key(key, 'load');
+			var data = acf.getPreference(this.name);
 			
 			// return
 			if( data && data[key] ) {
 				return data[key]
+			} else {
+				return false;
 			}
-			return false;
 		},
 		
-		set: function( fieldKey, collapsed ){
+		save: function( key, value ){
 			
 			// vars 
-			var key = this.getKey( fieldKey );
-			var data = acf.getPreference('this.collapsedRows');
-			
-			// default
-			if( !data ) {
-				data = {};
-			}
+			var key = this.key(key, 'save');
+			var data = acf.getPreference(this.name) || {};
 			
 			// delete
-			if( $.isEmptyObject(collapsed) ) {
+			if( value === null ) {
 				delete data[ key ];
 			
 			// append
 			} else {
-				data[ key ] = collapsed;
+				data[ key ] = value;
 			}
 			
 			// allow null
@@ -461,10 +448,9 @@
 			}
 			
 			// save
-			acf.setPreference('this.collapsedRows', data);
+			acf.setPreference(this.name, data);
 		}
-	});	
-	
+	});
 		
 })(jQuery);
 
@@ -481,6 +467,7 @@
 			'click [data-name="collapse-layout"]': 	'onClickCollapse',
 			'showField':							'onShow',
 			'unloadField':							'onUnload',
+			'mouseover': 							'onHover'
 		},
 		
 		$control: function(){
@@ -624,7 +611,7 @@
 		addCollapsed: function(){
 			
 			// vars
-			var indexes = collapsed.get( this.get('key') );
+			var indexes = preference.load( this.get('key') );
 			
 			// bail early if no collapsed
 			if( !indexes ) {
@@ -639,10 +626,18 @@
 			});
 		},
 		
+		addUnscopedEvents: function( self ){
+			
+			// invalidField
+			this.on('invalidField', '.layout', function(e){
+				self.onInvalidField( e, $(this) );
+			});
+		},
+		
 		initialize: function(){
 			
-			// add sortable
-			this.addSortable( this );
+			// add unscoped events
+			this.addUnscopedEvents( this );
 			
 			// add collapsed
 			this.addCollapsed();
@@ -676,10 +671,10 @@
 			}
 		},
 		
-		onShow: function( e, context ){
+		onShow: function( e, $el, context ){
 			
 			// get sub fields
-			var fields = acf.findFields({
+			var fields = acf.getFields({
 				is: ':visible',
 				parent: this.$el,
 			});
@@ -687,9 +682,7 @@
 			// trigger action
 			// - ignore context, no need to pass through 'conditional_logic'
 			// - this is just for fields like google_map to render itself
-			fields.each(function(){
-				acf.do_action('show_field', $(this));
-			});
+			acf.doAction('show_fields', fields);
 		},
 		
 		validateAdd: function(){
@@ -761,7 +754,7 @@
 			});
 			
 			// add extra event
-			popup.on('click [data-layout]', 'onConfirm');
+			popup.on('click', '[data-layout]', 'onConfirm');
 		},
 		
 		add: function( args ){
@@ -772,9 +765,6 @@
 				before: false
 			});
 			
-			// append
-			args.append = this.$layoutsWrap();
-			
 			// validate
 			if( !this.allowAdd() ) {
 				return false;
@@ -783,21 +773,22 @@
 			// add row
 			var $el = acf.duplicate({
 				target: this.$clone( args.layout ),
-				append: function( $el, $el2 ){
+				append: this.proxy(function( $el, $el2 ){
 					
+					// append
 					if( args.before ) {
 						args.before.before( $el2 );
 					} else {
-						args.append.append( $el2 );
+						this.$layoutsWrap().append( $el2 );
 					}
-				}
+					
+					// enable 
+					acf.enable( $el2, this.cid );
+					
+					// render
+					this.render();
+				})
 			});
-			
-			// enable 
-			acf.enable_form( $el, this.cid );
-			
-			// update order
-			this.render();
 			
 			// trigger change for validation errors
 			this.$input().trigger('change');
@@ -883,20 +874,30 @@
 			// vars
 			var $layout = $el.closest('.layout');
 			
-			// open if is collapsed
-			if( $layout.hasClass('-collapsed') ) {
-				$layout.removeClass('-collapsed');
-				acf.do_action('show', $layout, 'collapse');
-			
-			// close if not collapsed
+			// toggle
+			if( this.isLayoutClosed( $layout ) ) {
+				this.openLayout( $layout );
 			} else {
-				$layout.addClass('-collapsed');
-				acf.do_action('hide', $layout, 'collapse');
-				
-				// render
-				// - no change could happen if layout was already closed. Only render when opening
-				this.renderLayout( $layout );
+				this.closeLayout( $layout );
 			}
+		},
+		
+		isLayoutClosed: function( $layout ){
+			return $layout.hasClass('-collapsed');
+		},
+		
+		openLayout: function( $layout ){
+			$layout.removeClass('-collapsed');
+			acf.doAction('show', $layout, 'collapse');
+		},
+		
+		closeLayout: function( $layout ){
+			$layout.addClass('-collapsed');
+			acf.doAction('hide', $layout, 'collapse');
+			
+			// render
+			// - no change could happen if layout was already closed. Only render when closing
+			this.renderLayout( $layout );
 		},
 		
 		renderLayout: function( $layout ){
@@ -940,8 +941,28 @@
 				}
 			});
 			
+			// allow null
+			indexes = indexes.length ? indexes : null;
+			
 			// set
-			collapsed.set( this.get('key'), indexes );
+			preference.save( this.get('key'), indexes );
+		},
+		
+		onInvalidField: function( e, $layout ){
+			
+			// open if is collapsed
+			if( this.isLayoutClosed( $layout ) ) {
+				this.openLayout( $layout );
+			}
+		},
+		
+		onHover: function(){
+			
+			// add sortable
+			this.addSortable( this );
+			
+			// remove event
+			this.off('mouseover');
 		}
 						
 	});
@@ -999,27 +1020,19 @@
 	acf.registerConditionForFieldType('greaterThan', 'flexible_content');
 	
 	
-	// collapsed manager
-	var collapsed = new acf.Model({
+	// state
+	var preference = new acf.Model({
 		
-		data: {},
+		name: 'this.collapsedLayouts',
 		
-		reference: {},
-		
-		actions: {
-			'unload 1': 'reset',
-		},
-		
-		reset: function(){
-			this.data = {};
-			this.reference = {};
-		},
-		
-		getKey: function( key ){
+		key: function( key, context ){
 			
-			// increase reference (1, 2, 3 etc)
-			var count = this.reference[ key ] || 0;
-			this.reference[ key ] = ++count;
+			// vars
+			var count = this.get(key+context) || 0;
+			
+			// update
+			count++;
+			this.set(key+context, count, true);
 			
 			// modify fieldKey
 			if( count > 1 ) {
@@ -1030,37 +1043,33 @@
 			return key;
 		},
 		
-		get: function( fieldKey ){
+		load: function( key ){
 			
 			// vars 
-			var key = this.getKey( fieldKey );
-			var data = acf.getPreference('this.collapsedLayouts');
+			var key = this.key(key, 'load');
+			var data = acf.getPreference(this.name);
 			
 			// return
 			if( data && data[key] ) {
 				return data[key]
+			} else {
+				return false;
 			}
-			return false;
 		},
 		
-		set: function( fieldKey, collapsed ){
+		save: function( key, value ){
 			
 			// vars 
-			var key = this.getKey( fieldKey );
-			var data = acf.getPreference('this.collapsedLayouts');
-			
-			// default
-			if( !data ) {
-				data = {};
-			}
+			var key = this.key(key, 'save');
+			var data = acf.getPreference(this.name) || {};
 			
 			// delete
-			if( $.isEmptyObject(collapsed) ) {
+			if( value === null ) {
 				delete data[ key ];
 			
 			// append
 			} else {
-				data[ key ] = collapsed;
+				data[ key ] = value;
 			}
 			
 			// allow null
@@ -1069,7 +1078,7 @@
 			}
 			
 			// save
-			acf.setPreference('this.collapsedLayouts', data);
+			acf.setPreference(this.name, data);
 		}
 	});
 	
@@ -1089,11 +1098,14 @@
 			'click .acf-gallery-close': 		'onClickClose',
 			'change .acf-gallery-sort': 		'onChangeSort',
 			'click .acf-gallery-update': 		'onUpdate',
+			'mouseover': 						'onHover',
+			'showField': 						'render'
 		},
 		
 		actions: {
 			'validation_begin': 	'onValidationBegin',
-			'validation_failure': 	'onValidationFailure'
+			'validation_failure': 	'onValidationFailure',
+			'resize':				'onResize'
 		},
 		
 		onValidationBegin: function(){
@@ -1156,9 +1168,17 @@
 			return val.length ? val : false;
 		},
 		
-		initialize: function(){
+		addUnscopedEvents: function( self ){
 			
-			// sortable
+			// invalidField
+			this.on('change', '.acf-gallery-side', function(e){
+				self.onUpdate( e, $(this) );
+			});
+		},
+		
+		addSortable: function( self ){
+			
+			// add sortable
 			this.$collection().sortable({
 				items: '.acf-gallery-attachment',
 				forceHelperSize: true,
@@ -1178,10 +1198,12 @@
 					acf.update_user_setting('gallery_height', ui.size.height);
 				}
 			});
+		},
+		
+		initialize: function(){
 			
-			// manually apply these events to avoid scope / context issues
-			this.on('resize', this.proxy(this.onResize), $(window));
-			this.on('change .acf-gallery-side', this.proxy(this.onUpdate));
+			// add unscoped events
+			this.addUnscopedEvents( this );
 			
 			// render
 			this.render();
@@ -1548,7 +1570,7 @@
 				$side.find('> table.form-table > tbody').append( $side.find('> .compat-attachment-fields > tbody > tr') );	
 								
 				// setup fields
-				acf.do_action('append', $side);
+				acf.doAction('append', $side);
 			});
 			
 			// run step 1
@@ -1657,6 +1679,15 @@
 					$submit.prev('.acf-loading').remove();
 				}
 			});
+		},
+		
+		onHover: function(){
+			
+			// add sortable
+			this.addSortable( this );
+			
+			// remove event
+			this.off('mouseover');
 		}
 	});
 	
@@ -1665,8 +1696,8 @@
 	// register existing conditions
 	acf.registerConditionForFieldType('hasValue', 'gallery');
 	acf.registerConditionForFieldType('hasNoValue', 'gallery');
-	acf.registerConditionForFieldType('lessThan', 'gallery');
-	acf.registerConditionForFieldType('greaterThan', 'gallery');
+	acf.registerConditionForFieldType('selectionLessThan', 'gallery');
+	acf.registerConditionForFieldType('selectionGreaterThan', 'gallery');
 	
 })(jQuery);
 
